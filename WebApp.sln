@@ -1,0 +1,37 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.10.35201.131
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WebApp", "WebApp.csproj", "{EC34D1B1-5B5C-4C35-8CA3-FC7D1F4B4F89}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WebApp.Core", "..\WebApp.Core\WebApp.Core.csproj", "{FEFB92AE-B354-4B4E-960D-CDD070EED7EC}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebApp.Enums", "..\WebApp.Enums\WebApp.Enums.csproj", "{5A9D3250-1EA5-4BEB-B7AA-2AD92E00FC36}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{EC34D1B1-5B5C-4C35-8CA3-FC7D1F4B4F89}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EC34D1B1-5B5C-4C35-8CA3-FC7D1F4B4F89}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EC34D1B1-5B5C-4C35-8CA3-FC7D1F4B4F89}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EC34D1B1-5B5C-4C35-8CA3-FC7D1F4B4F89}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FEFB92AE-B354-4B4E-960D-CDD070EED7EC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FEFB92AE-B354-4B4E-960D-CDD070EED7EC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FEFB92AE-B354-4B4E-960D-CDD070EED7EC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FEFB92AE-B354-4B4E-960D-CDD070EED7EC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5A9D3250-1EA5-4BEB-B7AA-2AD92E00FC36}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5A9D3250-1EA5-4BEB-B7AA-2AD92E00FC36}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5A9D3250-1EA5-4BEB-B7AA-2AD92E00FC36}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5A9D3250-1EA5-4BEB-B7AA-2AD92E00FC36}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {AAA180C1-88E3-4EF3-8E4D-EFFE1D9EB1C6}
+	EndGlobalSection
+EndGlobal
