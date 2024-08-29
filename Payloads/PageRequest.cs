@@ -1,11 +1,13 @@
-﻿namespace WebApp.Payloads;
+﻿using WebApp.Enums;
+
+namespace WebApp.Payloads;
 
 public class PageRequest
 {
     public int Skip { get; set; }
     public int Take { get; set; }
     public string SortBy { get; set; } = "Id";
-    public string SortOrder { get; set; } = "ASC";
+    public string OrderBy { get; set; } = SortOrder.ASC;
     public int Page { get; set; }
     public int Size { get; set; }
 
@@ -20,7 +22,7 @@ public class PageRequest
             Skip = (pageNum - 1) * pageSize,
             Take = pageSize,
             SortBy = sortBy ?? "Id",
-            SortOrder = sortOrder ?? "ASC"
+            OrderBy = sortOrder ?? SortOrder.ASC,
         };
     }
 }

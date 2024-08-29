@@ -1,9 +1,11 @@
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using WebApp;
+using WebApp.Authentication;
 using WebApp.Core.Data;
 using WebApp.Repositories;
 using WebApp.Services.CommonService;
@@ -64,6 +66,11 @@ service.AddAuthentication(options =>
         };
     });
 
+// Custom authorization handlers:
+service.AddAuthorization();
+builder.Services.AddSingleton<IAuthorizationHandler, PermissionAuthorizationHandler>();
+builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissionAuthorizationPolicyProvider>();
+
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(ops =>
@@ -99,20 +106,21 @@ builder.Services.AddSwaggerGen(ops =>
             new string[]{}
         }
     });
-    //ops.OperationFilter<AddAuthorizationHeaderOperationFilter>();
 });
 
 /* Add mapper services */
 service.AddAutoMapper(
     typeof(UserMapper),
     typeof(RoleMapper)
-);
+    );
 
 /* Add application services */
 service.AddHttpContextAccessor();
 service.AddSingleton<JwtService>();
 service.AddScoped(typeof(IAppRepository<,>), typeof(AppRepository<,>));
 service.AddScoped<IUserService, UserAppService>();
+service.AddScoped<IRoleAppService, RoleAppService>();
+service.AddScoped<IPermissionAppService, PermissionAppService>();
 
 var app = builder.Build();
 

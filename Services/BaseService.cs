@@ -1,4 +1,6 @@
-﻿namespace WebApp.Services;
+﻿using WebApp.Repositories;
+
+namespace WebApp.Services;
 
 public abstract class BaseService(IConfiguration configuration, HttpContext httpContext)
 {

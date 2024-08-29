@@ -12,7 +12,12 @@ public class RoleMapper : Profile
             .ForMember(
                 d => d.Permissions,
                 op => op.MapFrom(r => r.Permissions.Select(p => p.PermissionName).ToHashSet())
+            );
+        CreateMap<RoleCreateDto, Role>()
+            .ForMember(
+            d => d.Permissions,
+            op => op.Ignore()
             )
-            ;
+            .ForAllMembers(opts => opts.Condition((src, dest, srcMember) => srcMember != null));
     }
 }

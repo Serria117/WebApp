@@ -12,7 +12,7 @@ namespace WebApp.Repositories
         Task<T> CreateAsync(T entity);
         Task CreateManyAsync(IEnumerable<T> entities);
         IQueryable<T> Find(Expression<Func<T, bool>> predicate, params string[] props);
-        Task<List<T>> FindAllAsync(int skip, int take, string? sortProperty);
+        Task<List<T>> FindAllAsync(int skip, int take, string? sortProperty, string? include = null);
         Task<T?> FindByIdAsync(TK id);
         Task UpdateAsync(T entity);
         Task<bool> ExistAsync(Expression<Func<T, bool>> predicate);
@@ -31,11 +31,15 @@ namespace WebApp.Repositories
             _dbSet = _db.Set<T>();
         }
 
-        public async Task<List<T>> FindAllAsync(int skip, int take, string? sortProperty)
+        public async Task<List<T>> FindAllAsync(int skip, int take, string? sortProperty, string? include = null)
         {
-            sortProperty ??= "Id ascending";
-            return await _dbSet
-                .Where(t => t.Deleted == false)
+            sortProperty ??= "Id ASC";
+            var query = _dbSet.Where(t => !t.Deleted);
+            if(include != null)
+            {
+                query = query.Include(include);
+            }
+            return await query
                 .OrderBy(sortProperty)
                 .Skip(skip)
                 .Take(take)
@@ -82,7 +86,9 @@ namespace WebApp.Repositories
 
         public async Task<int> CountAsync()
         {
-            return await _dbSet.CountAsync();
+            return await _dbSet
+                .Where(t => !t.Deleted)
+                .CountAsync();
         }
 
         public async Task<bool> SoftDelete(TK id)

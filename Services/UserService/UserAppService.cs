@@ -31,7 +31,7 @@ namespace WebApp.Services.UserService
         public async Task<AppResponse> GetAllUsers(PageRequest page)
         {
             var query = userRepository.Find(u => u.Deleted == false, "Roles");
-            var users = await query.OrderBy($"{page.SortBy} {page.SortOrder}")
+            var users = await query.OrderBy($"{page.SortBy} {page.OrderBy}")
                 .Skip(page.Skip)
                 .Take(page.Take)
                 .Select(u => mapper.Map<UserDisplayDto>(u))
