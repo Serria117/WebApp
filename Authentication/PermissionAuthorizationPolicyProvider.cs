@@ -9,8 +9,7 @@ namespace WebApp.Authentication
         {
         }
 
-        public override async Task<AuthorizationPolicy?> GetPolicyAsync(
-        string policyName)
+        public override async Task<AuthorizationPolicy?> GetPolicyAsync(string policyName)
         {
             AuthorizationPolicy? policy = await base.GetPolicyAsync(policyName);
 

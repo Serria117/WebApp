@@ -7,7 +7,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WebApp", "WebApp.csproj", "
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WebApp.Core", "..\WebApp.Core\WebApp.Core.csproj", "{FEFB92AE-B354-4B4E-960D-CDD070EED7EC}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebApp.Enums", "..\WebApp.Enums\WebApp.Enums.csproj", "{5A9D3250-1EA5-4BEB-B7AA-2AD92E00FC36}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WebApp.Enums", "..\WebApp.Enums\WebApp.Enums.csproj", "{5A9D3250-1EA5-4BEB-B7AA-2AD92E00FC36}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebApp.Mongo", "..\WebApp.Mongo\WebApp.Mongo.csproj", "{DD40B0F3-F95C-488C-8B51-165DCFA8E084}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -27,6 +29,10 @@ Global
 		{5A9D3250-1EA5-4BEB-B7AA-2AD92E00FC36}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5A9D3250-1EA5-4BEB-B7AA-2AD92E00FC36}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5A9D3250-1EA5-4BEB-B7AA-2AD92E00FC36}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DD40B0F3-F95C-488C-8B51-165DCFA8E084}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DD40B0F3-F95C-488C-8B51-165DCFA8E084}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DD40B0F3-F95C-488C-8B51-165DCFA8E084}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DD40B0F3-F95C-488C-8B51-165DCFA8E084}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

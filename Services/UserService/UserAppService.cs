@@ -2,6 +2,8 @@
 using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using WebApp.Core.DomainEntities;
+using WebApp.Mongo.MongoCollections;
+using WebApp.Mongo.MongoRepositories;
 using WebApp.Payloads;
 using WebApp.Repositories;
 using WebApp.Services.CommonService;
@@ -24,6 +26,7 @@ namespace WebApp.Services.UserService
     public class UserAppService(
         IMapper mapper,
         IAppRepository<User, Guid> userRepository,
+        IMongoRepository mongoRepository,
         JwtService jwtService,
         IConfiguration configuration,
         IAppRepository<Role, int> roleRepository) : IUserService
@@ -61,8 +64,10 @@ namespace WebApp.Services.UserService
             {
                 user.Roles.UnionWith(roles);
             }
-
             var created = await userRepository.CreateAsync(user);
+
+            await mongoRepository.InsertUser(await MapToMongo(created));
+
             return mapper.Map<UserDisplayDto>(created);
         }
 
@@ -92,12 +97,6 @@ namespace WebApp.Services.UserService
                 {
                     Message = "Invalid username or password."
                 };
-            }
-
-            var permissions = GetUserPermissions(user);
-            foreach (var permission in permissions)
-            {
-                Console.WriteLine(permission);
             }
 
             await ResetCount(user);
@@ -162,14 +161,23 @@ namespace WebApp.Services.UserService
                 .FirstOrDefaultAsync();
         }
 
-        private List<string> GetUserPermissions(User user)
+        private async Task<List<string>> GetUserPermissions(User user)
         {
-            return user.Roles.Where(r => !r.Deleted)
-                .SelectMany(r => r.Permissions)
-                .Where(p => !p.Deleted)
-                .Select(p => p.PermissionName)
+            return await userRepository.GetQueryable().Where(u => u.Id == user.Id)
+                .Include(u => u.Roles).ThenInclude(r => r.Permissions)
+                .SelectMany(u => u.Roles)
+                .SelectMany(r => r.Permissions).Select(p => p.PermissionName)
                 .Distinct()
-                .ToList();
+                .ToListAsync();
+        }
+
+        private async Task<UserDoc> MapToMongo(User user)
+        {
+            return new UserDoc
+            {
+                UserId = user.Id.ToString(),
+                Permissions = await GetUserPermissions(user)
+            };
         }
 
 

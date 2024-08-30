@@ -26,6 +26,7 @@
   <ItemGroup>
     <ProjectReference Include="..\WebApp.Core\WebApp.Core.csproj" />
     <ProjectReference Include="..\WebApp.Enums\WebApp.Enums.csproj" />
+    <ProjectReference Include="..\WebApp.Mongo\WebApp.Mongo.csproj" />
   </ItemGroup>
 
   <ItemGroup>

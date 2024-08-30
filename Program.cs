@@ -2,11 +2,15 @@ using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using MongoDB.Driver;
 using WebApp;
 using WebApp.Authentication;
 using WebApp.Core.Data;
+using WebApp.Mongo;
+using WebApp.Mongo.MongoRepositories;
 using WebApp.Repositories;
 using WebApp.Services.CommonService;
 using WebApp.Services.Mappers;
@@ -14,9 +18,11 @@ using WebApp.Services.UserService;
 
 // Declare variables.
 var builder = WebApplication.CreateBuilder(args);
-var service = builder.Services;
+var services = builder.Services;
 var config = builder.Configuration;
 var jwtKey = config["JwtSettings:SecretKey"];
+MongoDbSettings mongoDbSettings = config.GetSection("MongoDbSettings").Get<MongoDbSettings>()!;
+
 
 string[] origins =
 [
@@ -31,7 +37,7 @@ string[] origins =
 ];
 
 // Add services to the container.
-service.AddDbContext<AppDbContext>(op =>
+services.AddDbContext<AppDbContext>(op =>
 {
     op.UseSqlServer(connectionString: config.GetConnectionString("SqlServer"));
 });
@@ -43,7 +49,7 @@ builder.Services.AddControllers()
             System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
     });
 
-service.AddAuthentication(options =>
+services.AddAuthentication(options =>
     {
         options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
         options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -67,7 +73,7 @@ service.AddAuthentication(options =>
     });
 
 // Custom authorization handlers:
-service.AddAuthorization();
+services.AddAuthorization();
 builder.Services.AddSingleton<IAuthorizationHandler, PermissionAuthorizationHandler>();
 builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissionAuthorizationPolicyProvider>();
 
@@ -108,19 +114,33 @@ builder.Services.AddSwaggerGen(ops =>
     });
 });
 
+/*
+ * TODO implement MongoDb to store and read user's permission
+ * 1. Config mongoDb, add mongoDb dependencies to IOC
+ * 2. Create service to create/update user's permissions in mongodb collection
+ * 3. Change PermissionService's GetPermissions method to fetch data from mongoDb
+ */
+services.AddSingleton(mongoDbSettings);
+services.AddSingleton<IMongoClient, MongoClient>(sp =>
+        new MongoClient(mongoDbSettings?.ConnectionString));
+
+services.AddScoped<IMongoDatabase>(sp =>
+        sp.GetRequiredService<IMongoClient>().GetDatabase(mongoDbSettings?.DatabaseName));
+
 /* Add mapper services */
-service.AddAutoMapper(
+services.AddAutoMapper(
     typeof(UserMapper),
     typeof(RoleMapper)
     );
 
 /* Add application services */
-service.AddHttpContextAccessor();
-service.AddSingleton<JwtService>();
-service.AddScoped(typeof(IAppRepository<,>), typeof(AppRepository<,>));
-service.AddScoped<IUserService, UserAppService>();
-service.AddScoped<IRoleAppService, RoleAppService>();
-service.AddScoped<IPermissionAppService, PermissionAppService>();
+services.AddHttpContextAccessor();
+services.AddSingleton<JwtService>();
+services.AddScoped<IMongoRepository, MongoRepository>();
+services.AddScoped(typeof(IAppRepository<,>), typeof(AppRepository<,>));
+services.AddScoped<IUserService, UserAppService>();
+services.AddScoped<IRoleAppService, RoleAppService>();
+services.AddScoped<IPermissionAppService, PermissionAppService>();
 
 var app = builder.Build();
 

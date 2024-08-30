@@ -12,7 +12,7 @@ namespace WebApp.Controllers;
 public class UserController(IUserService userService) : ControllerBase
 {
     [HttpPost("create")]
-    [HasAuthority(Permissions.UserUpdate)]
+    [HasAuthority(Permissions.UserCreate)]
     public async Task<IActionResult> CreateUser(UserCreateDto dto)
     {
         try
