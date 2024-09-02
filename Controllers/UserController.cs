@@ -26,23 +26,13 @@ public class UserController(IUserService userService) : ControllerBase
         }
     }
 
-    [HttpPost("login")]
-    [AllowAnonymous]
-    public async Task<IActionResult> Login(UserLoginDto login)
-    {
-        var res = await userService.Authenticate(login);
-
-        return res.Success ? Ok(res) : Unauthorized(res);
-    }
-
     [HttpGet("all")]
     [HasAuthority(Permissions.UserView)]
-    public async Task<IActionResult> GetAll(
-        int page, int size, string? sortBy = "Id", string? sortOrder = "ASC")
+    public async Task<IActionResult> GetAll([FromQuery] RequestParam req)
     {
         try
         {
-            var paging = PageRequest.GetPaging(page, size, sortBy, sortOrder);
+            var paging = PageRequest.GetPage(req);
             var res = await userService.GetAllUsers(paging);
             return Ok(res);
         }
@@ -53,7 +43,7 @@ public class UserController(IUserService userService) : ControllerBase
     }
 
     [HttpGet("get-roles/{userId:guid}")]
-    [HasAuthority(Permissions.RoleView)]
+    [HasAuthority(Permissions.UserView)]
     public async Task<IActionResult> GetRolesFromUser(Guid userId)
     {
         try
@@ -63,7 +53,7 @@ public class UserController(IUserService userService) : ControllerBase
         }
         catch (Exception)
         {
-            return BadRequest("User Id not found");
+            return BadRequest(new { message = "User Id not found" });
         }
     }
 
@@ -72,6 +62,14 @@ public class UserController(IUserService userService) : ControllerBase
     public async Task<IActionResult> UnlockUser(Guid userId)
     {
         await userService.UnlockUser(userId);
-        return Ok();
+        return Ok(new { message = "user unlocked" });
+    }
+
+    [HttpPut("role-update/{userId:guid}")]
+    [HasAuthority(Permissions.UserUpdate)]
+    public async Task<IActionResult> UpdateRoles(Guid userId, List<int> roleIds)
+    {
+        var result = await userService.ChangeUserRoles(userId, roleIds);
+        return result.Success ? Ok(result) : BadRequest(result);
     }
 }

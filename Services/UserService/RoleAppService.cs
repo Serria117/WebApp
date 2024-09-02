@@ -25,13 +25,15 @@ namespace WebApp.Services.UserService
     {
         public async Task<AppResponse> GetAllRoles(PageRequest paging)
         {
-            var result = (await roleRepository.FindAllAsync(paging.Skip, paging.Take, $"{paging.SortBy} {paging.OrderBy}", "Permissions"))
+            var query = await roleRepository.FindAllAsync(paging.Skip, paging.Take, $"{paging.SortBy} {paging.OrderBy}",
+                "Permissions");
+            var result = query
                 .Select(mapper.Map<RoleDisplayDto>)
                 .ToList();
             var count = await roleRepository.CountAsync();
             return new AppResponse
             {
-                PageNumber = paging.Page,
+                PageNumber = paging.Number,
                 PageSize = paging.Size,
                 TotalCount = count,
                 Data = result,
@@ -47,8 +49,7 @@ namespace WebApp.Services.UserService
             if (permissions.Count > 0)
                 role.Permissions.UnionWith(permissions);
 
-            if (dto.User is not null)
-                await AddUsersToRole(role, dto.User);
+            await AddUsersToRole(role, dto.User);
 
 
             var saved = await roleRepository.CreateAsync(role);

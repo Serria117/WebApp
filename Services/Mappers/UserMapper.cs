@@ -12,9 +12,9 @@ public class UserMapper : Profile
         CreateMap<UserCreateDto, User>()
             .ForMember(u => u.Password, op => op.MapFrom(d => d.Password.PasswordEncode()))
             .ForMember(u => u.Roles, op => op.Ignore())
-            ;
+            .ForAllMembers(op => op.Condition((src, dest, srcMember) => srcMember != null));
+
         CreateMap<User, UserDisplayDto>()
-            .ForMember(d => d.Roles, op => op.MapFrom(u => u.Roles.Select(r => r.RoleName).ToHashSet()))
-            ;
+            .ForMember(d => d.Roles, op => op.MapFrom(u => u.Roles.Select(r => r.RoleName).ToHashSet()));
     }
 }

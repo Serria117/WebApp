@@ -9,11 +9,13 @@ using MongoDB.Driver;
 using WebApp;
 using WebApp.Authentication;
 using WebApp.Core.Data;
+using WebApp.Core.DomainEntities;
 using WebApp.Mongo;
 using WebApp.Mongo.MongoRepositories;
 using WebApp.Repositories;
 using WebApp.Services.CommonService;
 using WebApp.Services.Mappers;
+using WebApp.Services.OrganizationService;
 using WebApp.Services.UserService;
 
 // Declare variables.
@@ -21,7 +23,7 @@ var builder = WebApplication.CreateBuilder(args);
 var services = builder.Services;
 var config = builder.Configuration;
 var jwtKey = config["JwtSettings:SecretKey"];
-MongoDbSettings mongoDbSettings = config.GetSection("MongoDbSettings").Get<MongoDbSettings>()!;
+var mongoDbSettings = config.GetSection("MongoDbSettings").Get<MongoDbSettings>()!;
 
 
 string[] origins =
@@ -114,12 +116,6 @@ builder.Services.AddSwaggerGen(ops =>
     });
 });
 
-/*
- * TODO implement MongoDb to store and read user's permission
- * 1. Config mongoDb, add mongoDb dependencies to IOC
- * 2. Create service to create/update user's permissions in mongodb collection
- * 3. Change PermissionService's GetPermissions method to fetch data from mongoDb
- */
 services.AddSingleton(mongoDbSettings);
 services.AddSingleton<IMongoClient, MongoClient>(sp =>
         new MongoClient(mongoDbSettings?.ConnectionString));
@@ -130,7 +126,8 @@ services.AddScoped<IMongoDatabase>(sp =>
 /* Add mapper services */
 services.AddAutoMapper(
     typeof(UserMapper),
-    typeof(RoleMapper)
+    typeof(RoleMapper),
+    typeof(OrgMapper)
     );
 
 /* Add application services */
@@ -138,14 +135,28 @@ services.AddHttpContextAccessor();
 services.AddSingleton<JwtService>();
 services.AddScoped<IMongoRepository, MongoRepository>();
 services.AddScoped(typeof(IAppRepository<,>), typeof(AppRepository<,>));
-services.AddScoped<IUserService, UserAppService>();
-services.AddScoped<IRoleAppService, RoleAppService>();
-services.AddScoped<IPermissionAppService, PermissionAppService>();
+services.AddTransient<IUserService, UserAppService>();
+services.AddTransient<IRoleAppService, RoleAppService>();
+services.AddTransient<IPermissionAppService, PermissionAppService>();
+services.AddTransient<IOrganizationAppService, OrganizationAppService>();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    context.Database.EnsureCreated();
+    SeedPermissions(context);
+}
 
+// Configure the HTTP request pipeline.
+app.UseCors(op =>
+{
+    op.WithOrigins(origins);
+    op.AllowAnyHeader();
+    op.AllowAnyMethod();
+    op.Build();
+});
 app.UseMiddleware<ExceptionMiddleware>();
 if (app.Environment.IsDevelopment())
 {
@@ -158,3 +169,17 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+return;
+
+void SeedPermissions(AppDbContext context)
+{
+    var existingPermissions = context.Permissions.Select(p => p.PermissionName).ToHashSet();
+    var defaultPermissions = PermissionSeeder.GetDefaultPermissions();
+
+    foreach (var permission in defaultPermissions.Where(permission => !existingPermissions.Contains(permission)))
+    {
+        context.Permissions.Add(new Permission { PermissionName = permission });
+    }
+
+    context.SaveChanges();
+}

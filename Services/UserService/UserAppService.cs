@@ -1,4 +1,5 @@
-﻿using System.Linq.Dynamic.Core;
+﻿using System.Diagnostics;
+using System.Linq.Dynamic.Core;
 using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using WebApp.Core.DomainEntities;
@@ -8,6 +9,7 @@ using WebApp.Payloads;
 using WebApp.Repositories;
 using WebApp.Services.CommonService;
 using WebApp.Services.UserService.Dto;
+using X.Extensions.PagedList.EF;
 
 namespace WebApp.Services.UserService
 {
@@ -21,6 +23,7 @@ namespace WebApp.Services.UserService
         Task<List<RoleDisplayDto>> FindRolesByUser(Guid userId);
         Task<AppResponse> GetAllUsers(PageRequest page);
         Task UnlockUser(Guid userId);
+        Task<AppResponse> ChangeUserRoles(Guid id, List<int> roleIds);
     }
 
     public class UserAppService(
@@ -33,19 +36,16 @@ namespace WebApp.Services.UserService
     {
         public async Task<AppResponse> GetAllUsers(PageRequest page)
         {
-            var query = userRepository.Find(u => u.Deleted == false, "Roles");
-            var users = await query.OrderBy($"{page.SortBy} {page.OrderBy}")
-                .Skip(page.Skip)
-                .Take(page.Take)
-                .Select(u => mapper.Map<UserDisplayDto>(u))
-                .ToListAsync();
-            var count = await query.CountAsync();
+            var query = userRepository.Find(u => !u.Deleted, "Roles");
+            var users = await query
+                .OrderBy(page.Sort)
+                .ToPagedListAsync(page.Number, page.Size);
             return new AppResponse
             {
-                Data = users,
-                PageNumber = page.Page,
+                Data = users.Select(mapper.Map<UserDisplayDto>).ToList(),
+                PageNumber = page.Number,
                 PageSize = page.Size,
-                TotalCount = count
+                TotalCount = users.TotalItemCount
             };
         }
 
@@ -64,6 +64,7 @@ namespace WebApp.Services.UserService
             {
                 user.Roles.UnionWith(roles);
             }
+
             var created = await userRepository.CreateAsync(user);
 
             await mongoRepository.InsertUser(await MapToMongo(created));
@@ -73,35 +74,50 @@ namespace WebApp.Services.UserService
 
         public async Task<AuthenticationResponse> Authenticate(UserLoginDto login)
         {
+            var stopWatch = Stopwatch.StartNew();
             var user = await FindUserByUserName(login.Username);
-            if (user is null || !login.Password.PasswordVerify(user.Password))
+            bool passwordMatch = false;
+            /*user = new User
             {
-                if (user is null || user.Deleted)
-                {
-                    return new AuthenticationResponse
-                    {
-                        Message = "Invalid username or password."
-                    };
-                }
+                Id = Guid.Parse("30a34f86-46ca-4370-3e6c-08dcc8a7abfb"),
+                Username = "admin",
+                Password = "$2a$12$CEvIlWrwzU2LjabBFJRoY.9lpXN8EULsznFlFDKdm3W07KMh5y6FG"
+            };*/
+            Console.WriteLine($"found user in db took: {stopWatch.ElapsedMilliseconds} ms");
 
-                if (user.Locked)
-                {
-                    return new AuthenticationResponse
-                    {
-                        Message = "Your account has been locked."
-                    };
-                }
-
-                await LoginCount(user);
+            if (user is not null)
+            {
+                passwordMatch = login.Password.PasswordVerify(user.Password);
+            }
+            else
+            {
                 return new AuthenticationResponse
                 {
                     Message = "Invalid username or password."
                 };
             }
 
-            await ResetCount(user);
-            var issuedAt = DateTime.Now;
+            if (!passwordMatch)
+            {
+                await LoginFailureHandler(user);
+                return new AuthenticationResponse
+                {
+                    Message = "Invalid username or password."
+                };
+            }
+
+            if (user.Locked)
+            {
+                return new AuthenticationResponse
+                {
+                    Message = "Your account has been locked."
+                };
+            }
+
+            if (user is { LogInFailedCount: > 0, Locked: false }) await ResetAccount(user);
+            var issuedAt = DateTime.UtcNow.ToLocalTime();
             var accessToken = jwtService.GenerateToken(user, issuedAt);
+            Console.WriteLine($"Generate jwt took: {stopWatch.ElapsedMilliseconds} ms");
             return new AuthenticationResponse
             {
                 Success = true,
@@ -113,11 +129,24 @@ namespace WebApp.Services.UserService
             };
         }
 
+        public async Task<AppResponse> ChangeUserRoles(Guid id, List<int> roleIds)
+        {
+            var user = await userRepository.Find(u => u.Id == id, "Roles").FirstOrDefaultAsync();
+            if (user is null) return new AppResponse() { Success = false, Message = "User not found" };
+            var roles = await roleRepository.Find(r => roleIds.Contains(r.Id)).ToListAsync();
+            if (roles.Count == 0) return new AppResponse() { Success = false, Message = "Role not found" };
+            user.Roles.Clear();
+            user.Roles.UnionWith(roles);
+            await userRepository.UpdateAsync(user);
+            await UpdateUserWithMongo(user);
+            return new AppResponse() { Message = "OK" };
+        }
+
         public async Task UnlockUser(Guid userId)
         {
             var user = await userRepository.Find(u => u.Id == userId).FirstOrDefaultAsync();
             if (user is null) throw new Exception("User not found");
-            await ResetCount(user);
+            await ResetAccount(user);
             await userRepository.UpdateAsync(user);
         }
 
@@ -129,7 +158,7 @@ namespace WebApp.Services.UserService
 
         public async Task<User?> FindUserByUserName(string username)
         {
-            return await userRepository.Find(u => u.Username == username).FirstOrDefaultAsync();
+            return await userRepository.Find(u => u.Username == username && !u.Deleted).FirstOrDefaultAsync();
         }
 
         public async Task<List<Role>> FindAllRoles(ICollection<int> roleIds)
@@ -154,16 +183,33 @@ namespace WebApp.Services.UserService
             }
         }
 
+        public async Task UpdateUserWithMongo(Guid userId)
+        {
+            var user = await userRepository.FindByIdAsync(userId);
+            if (user is not null)
+            {
+                var userDoc = await MapToMongo(user);
+                await mongoRepository.InsertUser(userDoc);
+            }
+        }
+
+        private async Task UpdateUserWithMongo(User user)
+        {
+            var userDoc = await MapToMongo(user);
+            await mongoRepository.UpdateUser(userDoc);
+        }
+
         private async Task<User?> FindUserByUsername(string name)
         {
             return await userRepository
                 .Find(x => x.Username == name && !x.Deleted)
+                .Include(u => u.Roles).ThenInclude(r => r.Permissions)
                 .FirstOrDefaultAsync();
         }
 
-        private async Task<List<string>> GetUserPermissions(User user)
+        private async Task<List<string>> GetUserPermissions(Guid id)
         {
-            return await userRepository.GetQueryable().Where(u => u.Id == user.Id)
+            return await userRepository.Find(u => u.Id == id && !u.Deleted)
                 .Include(u => u.Roles).ThenInclude(r => r.Permissions)
                 .SelectMany(u => u.Roles)
                 .SelectMany(r => r.Permissions).Select(p => p.PermissionName)
@@ -176,14 +222,15 @@ namespace WebApp.Services.UserService
             return new UserDoc
             {
                 UserId = user.Id.ToString(),
-                Permissions = await GetUserPermissions(user)
+                Permissions = await GetUserPermissions(user.Id)
             };
         }
 
 
-        private async Task LoginCount(User user)
+        private async Task LoginFailureHandler(User user)
         {
-            user.LogInFailedCount += 1;
+            user.LogInFailedCount += 1; // count login attempt
+            //Lock account if attempt reached limit
             if (user.LogInFailedCount == int.Parse(configuration["SecureLogin:FailedCountLimit"]!))
             {
                 user.Locked = true;
@@ -192,9 +239,10 @@ namespace WebApp.Services.UserService
             await userRepository.UpdateAsync(user);
         }
 
-        private async Task ResetCount(User user)
+        private async Task ResetAccount(User user)
         {
             user.LogInFailedCount = 0;
+            user.Locked = false;
             await userRepository.UpdateAsync(user);
         }
     }

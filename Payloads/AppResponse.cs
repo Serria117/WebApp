@@ -1,4 +1,6 @@
-﻿namespace WebApp.Payloads;
+﻿using X.PagedList;
+
+namespace WebApp.Payloads;
 
 public class AppResponse
 {
@@ -15,6 +17,30 @@ public class AppResponse
         {
             Data = data,
             Message = "OK"
+        };
+    }
+    
+    public static AppResponse SuccessResponse(object data, PageRequest page)
+    {
+        return new AppResponse
+        {
+            Data = data,
+            Message = "OK",
+            PageNumber = page.Number,
+            PageSize = page.Size,
+            TotalCount = page.Total
+        };
+    }
+
+    public static AppResponse SuccessResponsePaged<T>(IPagedList<T> data, int totalCount)
+    {
+        return new AppResponse
+        {
+            Data = data.ToList(),
+            Message = "OK",
+            PageNumber = data.PageNumber,
+            PageSize = data.PageSize,
+            TotalCount = totalCount
         };
     }
 }

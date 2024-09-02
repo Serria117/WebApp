@@ -1,4 +1,5 @@
 ﻿using System.Drawing;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using WebApp.Authentication;
 using WebApp.Enums;
@@ -8,7 +9,7 @@ using WebApp.Services.UserService.Dto;
 
 namespace WebApp.Controllers
 {
-    [ApiController, Route("/api/role")]
+    [ApiController, Route("/api/role")][Authorize]
     public class RoleController(IRoleAppService roleService) : ControllerBase
     {
         [HttpPost("create")]
@@ -17,17 +18,15 @@ namespace WebApp.Controllers
             return Ok(await roleService.CreateRole(dto));
         }
 
-        [HttpGet("")]
-        public async Task<IActionResult> GetAllRoles(int page = 1, int size = 10, 
-            string? sortBy = "Id", 
-            string? orderBy = SortOrder.ASC)
+        [HttpGet("all")]
+        public async Task<IActionResult> GetAllRoles([FromQuery] RequestParam req)
         {
-            var paging = PageRequest.GetPaging(page, size, sortBy, orderBy);
+            var paging = PageRequest.GetPage(req);
             var result = await roleService.GetAllRoles(paging);
             return Ok(result);
         }
 
-        [HttpPut("{id}")]
+        [HttpPut("{id:int}")]
         public async Task<IActionResult> UpdateRole(int id, RoleCreateDto dto)
         {
             await roleService.UpdateRole(id, dto);

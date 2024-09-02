@@ -16,9 +16,10 @@ namespace WebApp.Repositories
         Task<T?> FindByIdAsync(TK id);
         Task UpdateAsync(T entity);
         Task<bool> ExistAsync(Expression<Func<T, bool>> predicate);
-        Task<int> CountAsync();
+        Task<int> CountAsync(IQueryable<T> query);
         Task<bool> SoftDelete(TK id);
         IQueryable<T> GetQueryable();
+        Task<int> CountAsync();
     }
 
     public class AppRepository<T, TK> : IAppRepository<T, TK> where T : BaseEntity
@@ -90,13 +91,17 @@ namespace WebApp.Repositories
             return await query.AnyAsync();
         }
 
+        public async Task<int> CountAsync(IQueryable<T> query)
+        {
+            return await query.CountAsync();
+        }
+        
         public async Task<int> CountAsync()
         {
-            return await _dbSet
-                .Where(t => !t.Deleted)
-                .CountAsync();
+            return await _dbSet.CountAsync();
         }
-
+        
+        
         public async Task<bool> SoftDelete(TK id)
         {
             var entity = await _dbSet.FindAsync(id);
