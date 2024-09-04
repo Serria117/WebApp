@@ -7,6 +7,7 @@ using WebApp.Core.DomainEntities;
 using WebApp.Enums;
 using WebApp.Payloads;
 using WebApp.Repositories;
+using WebApp.Services.CommonService;
 using WebApp.Services.OrganizationService.Dto;
 using X.Extensions.PagedList.EF;
 using X.PagedList;
@@ -47,12 +48,13 @@ public class OrganizationAppService(
 
     public async Task<AppResponse> Find(PageRequest page)
     {
+        var keyword = page.Keyword.RemoveSpace();
         var pagedResult = await orgRepo.Find
             (
-                condition: o => !o.Deleted && (string.IsNullOrEmpty(page.Keyword) ||
-                                               o.FullName.Contains(page.Keyword) ||
-                                               o.ShortName == null || o.ShortName.Contains(page.Keyword) ||
-                                               o.TaxId.Contains(page.Keyword)),
+                condition: o => !o.Deleted && (string.IsNullOrEmpty(keyword) ||
+                                               o.UnsignName.Contains(keyword) ||
+                                               o.ShortName == null || o.ShortName.Contains(keyword) ||
+                                               o.TaxId.Contains(keyword)),
                 sortBy: page.SortBy,
                 order: page.OrderBy
             )
@@ -65,8 +67,7 @@ public class OrganizationAppService(
     public async Task<AppResponse> Update(Guid orgId, OrganizationInputDto updateDto)
     {
         
-        var foundOrg = await orgRepo.Find(o => o.Id == orgId && !o.Deleted)
-            .FirstOrDefaultAsync();
+        var foundOrg = await orgRepo.Find(o => o.Id == orgId && !o.Deleted).FirstOrDefaultAsync();
         if (foundOrg is null) 
             return new AppResponse { Success = false, Message = "Organization Id not found" };
         if (await TaxIdExist(updateDto.TaxId) && updateDto.TaxId != foundOrg.TaxId)
