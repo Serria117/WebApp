@@ -7,16 +7,19 @@ public static partial class StringService
 {
     public static string? RemoveSpace(this string? str)
     {
-        return string.IsNullOrEmpty(str) ? null : MyRegex().Replace(str.Trim(), " ");
+        return string.IsNullOrEmpty(str) ? null : SpaceRegex().Replace(str.Trim(), " ");
     }
 
     [GeneratedRegex(@"\s{2,}")]
-    private static partial Regex MyRegex();
+    private static partial Regex SpaceRegex();
     
     public static string UnSign(this string s)
     {  
-        Regex regex = new Regex("\\p{IsCombiningDiacriticalMarks}+");
-        string temp = s.Normalize(NormalizationForm.FormD);
-        return regex.Replace(temp, String.Empty).Replace('\u0111', 'd').Replace('\u0110', 'D').RemoveSpace()!;
-    }  
+        var regex = UnsignRegex();
+        var temp = s.Normalize(NormalizationForm.FormD);
+        return regex.Replace(temp, string.Empty).Replace('\u0111', 'd').Replace('\u0110', 'D').RemoveSpace()!;
+    }
+
+    [GeneratedRegex("\\p{IsCombiningDiacriticalMarks}+")]
+    private static partial Regex UnsignRegex();
 }
