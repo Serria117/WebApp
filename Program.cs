@@ -6,6 +6,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using MongoDB.Driver;
+using RestSharp;
 using WebApp;
 using WebApp.Authentication;
 using WebApp.Core.Data;
@@ -35,7 +36,8 @@ string[] origins =
     "http://127.0.0.1:5173",
     "http://127.0.0.1:4200",
     "http://14.225.19.135:4200",
-    "http://14.225.19.135:5173"
+    "http://14.225.19.135:5173",
+    "http://localhost:24894"
 ];
 
 // Add services to the container.
@@ -63,8 +65,8 @@ services.AddAuthentication(options =>
         options.RequireHttpsMetadata = false;
         options.TokenValidationParameters = new TokenValidationParameters
         {
-            ValidateIssuer = false,
-            ValidateAudience = false,
+            ValidateIssuer = true,
+            ValidateAudience = true,
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
             ValidIssuer = config["JwtSettings:Issuer"],
@@ -111,24 +113,23 @@ builder.Services.AddSwaggerGen(ops =>
                 Name = "Bearer",
                 In = ParameterLocation.Header,*/
             },
-            new string[]{}
+            Array.Empty<string>()
         }
     });
 });
 
 services.AddSingleton(mongoDbSettings);
-services.AddSingleton<IMongoClient, MongoClient>(sp =>
-        new MongoClient(mongoDbSettings?.ConnectionString));
+services.AddSingleton<IMongoClient, MongoClient>(_ =>
+        new MongoClient(mongoDbSettings.ConnectionString));
 
 services.AddScoped<IMongoDatabase>(sp =>
-        sp.GetRequiredService<IMongoClient>().GetDatabase(mongoDbSettings?.DatabaseName));
+        sp.GetRequiredService<IMongoClient>().GetDatabase(mongoDbSettings.DatabaseName));
+
+services.AddSingleton<IRestClient>(new RestClient());
 
 /* Add mapper services */
-services.AddAutoMapper(
-    typeof(UserMapper),
-    typeof(RoleMapper),
-    typeof(OrgMapper)
-    );
+services.AddAutoMapper(typeof(UserMapper), typeof(RoleMapper), 
+    typeof(OrgMapper), typeof(PagedMapper));
 
 /* Add application services */
 services.AddHttpContextAccessor();
@@ -157,6 +158,7 @@ app.UseCors(op =>
     op.AllowAnyMethod();
     op.Build();
 });
+
 app.UseMiddleware<ExceptionMiddleware>();
 if (app.Environment.IsDevelopment())
 {

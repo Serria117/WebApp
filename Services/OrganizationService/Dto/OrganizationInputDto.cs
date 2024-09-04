@@ -2,7 +2,7 @@
 
 namespace WebApp.Services.OrganizationService.Dto;
 
-public class OrganizationCreateDto
+public class OrganizationInputDto
 {
     [Length(3, 500)] [Required]
     public string FullName { get; set; } = string.Empty;
@@ -23,4 +23,6 @@ public class OrganizationCreateDto
 
     [MaxLength(1000)]
     public string? ContactAddress { get; set; }
+
+    //public DateTime LastUpdateAt { get; set; } = DateTime.UtcNow.ToLocalTime();
 }

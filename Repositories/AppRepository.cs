@@ -4,17 +4,22 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using WebApp.Core.Data;
 using WebApp.Core.DomainEntities;
+using Z.EntityFramework.Plus;
 
 namespace WebApp.Repositories
 {
-    public interface IAppRepository<T, in TK> where T : BaseEntity
+    public interface IAppRepository<T, in TK> where T : BaseEntity<TK>
     {
         Task<T> CreateAsync(T entity);
         Task CreateManyAsync(IEnumerable<T> entities);
-        IQueryable<T> Find(Expression<Func<T, bool>> predicate, params string[] props);
+        IQueryable<T> Find(Expression<Func<T, bool>> condition, params string[] include);
+
+        IQueryable<T> Find(Expression<Func<T, bool>> condition, string? sortBy = "Id", string? order = "ASC",
+            params string[] include);
+
         Task<List<T>> FindAllAsync(int skip, int take, string? sortProperty, string? include = null);
         Task<T?> FindByIdAsync(TK id);
-        Task UpdateAsync(T entity);
+        Task<T> UpdateAsync(T entity);
         Task<bool> ExistAsync(Expression<Func<T, bool>> predicate);
         Task<int> CountAsync(IQueryable<T> query);
         Task<bool> SoftDelete(TK id);
@@ -22,7 +27,7 @@ namespace WebApp.Repositories
         Task<int> CountAsync();
     }
 
-    public class AppRepository<T, TK> : IAppRepository<T, TK> where T : BaseEntity
+    public class AppRepository<T, TK> : IAppRepository<T, TK> where T : BaseEntity<TK>
     {
         private readonly AppDbContext _db;
         private readonly DbSet<T> _dbSet;
@@ -42,10 +47,11 @@ namespace WebApp.Repositories
         {
             sortProperty ??= "Id ASC";
             var query = _dbSet.Where(t => !t.Deleted);
-            if(include != null)
+            if (include != null)
             {
                 query = query.Include(include);
             }
+
             return await query
                 .OrderBy(sortProperty)
                 .Skip(skip)
@@ -60,12 +66,27 @@ namespace WebApp.Repositories
             return saved;
         }
 
-        public IQueryable<T> Find(Expression<Func<T, bool>> predicate, params string[] props)
+        public IQueryable<T> Find(Expression<Func<T, bool>> condition, params string[] include)
         {
-            var query = _dbSet.Where(predicate);
-            return props.IsNullOrEmpty()
-                ? query
-                : props.Aggregate(query, (current, prop) => current.Include(prop));
+            var query = _dbSet.Where(condition);
+            if (!include.IsNullOrEmpty())
+            {
+                query = include.Aggregate(query, (current, prop) => current.Include(prop));
+            }
+
+            return query.OrderBy("Id DESC");
+        }
+
+        public IQueryable<T> Find(Expression<Func<T, bool>> condition, string? sortBy = "Id", string? order = "ASC",
+            params string[] include)
+        {
+            var query = _dbSet.Where(condition);
+            if (!include.IsNullOrEmpty())
+            {
+                query = include.Aggregate(query, (current, prop) => current.Include(prop));
+            }
+
+            return query.OrderBy($"{sortBy} {order}");
         }
 
         public async Task CreateManyAsync(IEnumerable<T> entities)
@@ -79,10 +100,11 @@ namespace WebApp.Repositories
             return await _dbSet.FindAsync(id);
         }
 
-        public async Task UpdateAsync(T entity)
+        public async Task<T> UpdateAsync(T entity)
         {
-            _dbSet.Update(entity);
+            var res = _dbSet.Update(entity);
             await _db.SaveChangesAsync();
+            return res.Entity;
         }
 
         public async Task<bool> ExistAsync(Expression<Func<T, bool>> predicate)
@@ -95,13 +117,13 @@ namespace WebApp.Repositories
         {
             return await query.CountAsync();
         }
-        
+
         public async Task<int> CountAsync()
         {
             return await _dbSet.CountAsync();
         }
-        
-        
+
+
         public async Task<bool> SoftDelete(TK id)
         {
             var entity = await _dbSet.FindAsync(id);

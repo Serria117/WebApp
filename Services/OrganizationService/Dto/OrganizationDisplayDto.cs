@@ -12,4 +12,7 @@ public class OrganizationDisplayDto
     public string? InvoicePwd { get; set; }
     public string? Address { get; set; }
     public string? ContactAddress { get; set; }
+    public DateTime? CreateAt { get; set; }
+    public DateTime? LastUpdateAt { get; set; }
+    public string? CreateBy { get; set; }
 }

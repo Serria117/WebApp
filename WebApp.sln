@@ -9,7 +9,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WebApp.Core", "..\WebApp.Co
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WebApp.Enums", "..\WebApp.Enums\WebApp.Enums.csproj", "{5A9D3250-1EA5-4BEB-B7AA-2AD92E00FC36}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebApp.Mongo", "..\WebApp.Mongo\WebApp.Mongo.csproj", "{DD40B0F3-F95C-488C-8B51-165DCFA8E084}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "WebApp.Mongo", "..\WebApp.Mongo\WebApp.Mongo.csproj", "{DD40B0F3-F95C-488C-8B51-165DCFA8E084}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -14,7 +14,7 @@ namespace WebApp.Controllers
     {
         [HttpPost("create")]
         [HasAuthority(Permissions.OrgCreate)]
-        public async Task<IActionResult> Create(OrganizationCreateDto input)
+        public async Task<IActionResult> Create(OrganizationInputDto input)
         {
             var res = await orgService.Create(input);
             return res.Success ? Ok(res) : BadRequest(res);
@@ -35,6 +35,13 @@ namespace WebApp.Controllers
         {
             var res = await orgService.GetById(id);
             return res.Success ? Ok(res) : NotFound(res);
+        }
+
+        [HttpPut("{id:guid}")]
+        public async Task<IActionResult> Update(Guid id, OrganizationInputDto dto)
+        {
+            var result = await orgService.Update(id, dto);
+            return result.Success ? Ok(result) : BadRequest(result);
         }
 
         [HttpGet("exist/{taxId}")]

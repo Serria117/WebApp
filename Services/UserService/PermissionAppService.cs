@@ -1,7 +1,10 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using AutoMapper;
+using Microsoft.EntityFrameworkCore;
 using WebApp.Core.DomainEntities;
 using WebApp.Mongo.MongoRepositories;
+using WebApp.Payloads;
 using WebApp.Repositories;
+using WebApp.Services.UserService.Dto;
 
 namespace WebApp.Services.UserService
 {
@@ -9,9 +12,13 @@ namespace WebApp.Services.UserService
     {
         Task<List<string>> GetPermissions(Guid userId);
         Task<List<string>> GetPermissionsFromMongo(Guid userId);
+        Task<AppResponse> GetAllPermissionsInSystem();
     }
 
-    public class PermissionAppService(IAppRepository<User, Guid> userRepo, IMongoRepository mongoRepo) : IPermissionAppService
+    public class PermissionAppService(IAppRepository<User, Guid> userRepo, 
+        IAppRepository<Permission, int> permissionRepo,
+        IMapper mapper,
+        IMongoRepository mongoRepo) : IPermissionAppService
     {
         public async Task<List<string>> GetPermissions(Guid userId)
         {
@@ -26,6 +33,13 @@ namespace WebApp.Services.UserService
         public async Task<List<string>> GetPermissionsFromMongo(Guid userId)
         {
             return [.. (await mongoRepo.GetUser(userId)).Permissions];
+        }
+
+        public async Task<AppResponse> GetAllPermissionsInSystem()
+        {
+            var permissions = await permissionRepo.Find(p => !p.Deleted).ToListAsync();
+            //permissions.Select(mapper.Map<PermissionDisplayDto>)
+            return AppResponse.SuccessResponse(mapper.Map<List<PermissionDisplayDto>>(permissions));
         }
     }
 }

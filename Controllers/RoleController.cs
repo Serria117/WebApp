@@ -10,10 +10,10 @@ using WebApp.Services.UserService.Dto;
 namespace WebApp.Controllers
 {
     [ApiController, Route("/api/role")][Authorize]
-    public class RoleController(IRoleAppService roleService) : ControllerBase
+    public class RoleController(IRoleAppService roleService, IPermissionAppService permissionService) : ControllerBase
     {
         [HttpPost("create")]
-        public async Task<IActionResult> CreateRole(RoleCreateDto dto)
+        public async Task<IActionResult> CreateRole(RoleInputDto dto)
         {
             return Ok(await roleService.CreateRole(dto));
         }
@@ -27,10 +27,24 @@ namespace WebApp.Controllers
         }
 
         [HttpPut("{id:int}")]
-        public async Task<IActionResult> UpdateRole(int id, RoleCreateDto dto)
+        public async Task<IActionResult> UpdateRole(int id, RoleInputDto dto)
         {
             await roleService.UpdateRole(id, dto);
             return Ok();
+        }
+
+        [HttpGet("permissions-in-role/{roleId:int}")]
+        public async Task<IActionResult> GetPermissionsInRole(int roleId)
+        {
+            var result = await roleService.GetAllPermissionsInRole(roleId);
+            return result.Success ? Ok(result) : BadRequest(result);
+        }
+
+        [HttpGet("all-permissions")]
+        public async Task<IActionResult> GetAllPermissionsInSystem()
+        {
+            var result = await permissionService.GetAllPermissionsInSystem();
+            return Ok(result);
         }
     }
 }

@@ -1,6 +1,6 @@
 ﻿namespace WebApp.Services.UserService.Dto
 {
-    public class RoleCreateDto
+    public class RoleInputDto
     {
         public string RoleName { get; set; } = string.Empty;
         public string? Description { get; set; }

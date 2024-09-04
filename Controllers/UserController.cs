@@ -13,7 +13,7 @@ public class UserController(IUserService userService) : ControllerBase
 {
     [HttpPost("create")]
     [HasAuthority(Permissions.UserCreate)]
-    public async Task<IActionResult> CreateUser(UserCreateDto dto)
+    public async Task<IActionResult> CreateUser(UserInputDto dto)
     {
         try
         {

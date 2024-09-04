@@ -2,7 +2,7 @@
 
 namespace WebApp.Services.UserService.Dto;
 
-public class UserCreateDto
+public class UserInputDto
 {
     [MinLength(3), MaxLength(255)]
     public string Username { get; set; } = string.Empty;

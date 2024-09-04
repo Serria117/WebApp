@@ -15,7 +15,7 @@ namespace WebApp.Services.UserService
 {
     public interface IUserService
     {
-        Task<UserDisplayDto> CreateUser(UserCreateDto user);
+        Task<UserDisplayDto> CreateUser(UserInputDto user);
         Task<AuthenticationResponse> Authenticate(UserLoginDto login);
         Task<bool> ExistUsername(string username);
         Task<User?> FindUserByUserName(string username);
@@ -49,7 +49,7 @@ namespace WebApp.Services.UserService
             };
         }
 
-        public async Task<UserDisplayDto> CreateUser(UserCreateDto userDto)
+        public async Task<UserDisplayDto> CreateUser(UserInputDto userDto)
         {
             if (userDto == null)
                 throw new Exception("Invalid user input");
@@ -134,7 +134,7 @@ namespace WebApp.Services.UserService
             var user = await userRepository.Find(u => u.Id == id, "Roles").FirstOrDefaultAsync();
             if (user is null) return new AppResponse() { Success = false, Message = "User not found" };
             var roles = await roleRepository.Find(r => roleIds.Contains(r.Id)).ToListAsync();
-            if (roles.Count == 0) return new AppResponse() { Success = false, Message = "Role not found" };
+            if (roles.Count == 0) return new AppResponse { Success = false, Message = "Role not found" };
             user.Roles.Clear();
             user.Roles.UnionWith(roles);
             await userRepository.UpdateAsync(user);

@@ -9,8 +9,8 @@ public class UserMapper : Profile
 {
     public UserMapper()
     {
-        CreateMap<UserCreateDto, User>()
-            .ForMember(u => u.Password, op => op.MapFrom(d => d.Password.PasswordEncode()))
+        CreateMap<UserInputDto, User>()
+            .ForMember(u => u.Password, op => op.MapFrom(d => d.Password.BCryptHash()))
             .ForMember(u => u.Roles, op => op.Ignore())
             .ForAllMembers(op => op.Condition((src, dest, srcMember) => srcMember != null));
 

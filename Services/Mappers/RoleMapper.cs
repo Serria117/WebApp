@@ -1,4 +1,5 @@
-﻿using AutoMapper;
+﻿using System.Security.Cryptography;
+using AutoMapper;
 using WebApp.Core.DomainEntities;
 using WebApp.Services.UserService.Dto;
 
@@ -9,12 +10,16 @@ public class RoleMapper : Profile
     public RoleMapper()
     {
         CreateMap<Role, RoleDisplayDto>()
-            .ForMember(d => d.Permissions, op => op.MapFrom(r => r.Permissions.Select(p => p.PermissionName)
-            .ToHashSet())
-            );
+            .ForMember(des => des.Permissions, op => op.MapFrom(r => r.Permissions.Select(p => p.PermissionName).ToHashSet()))
+            .ForMember(des => des.Users, op => op.MapFrom(r => r.Users.Select(u => u.Username).ToHashSet()));
 
-        CreateMap<RoleCreateDto, Role>()
-            .ForMember(d => d.Permissions, op => op.Ignore())
-            .ForAllMembers(opts => opts.Condition((src, dest, srcMember) => srcMember != null));
+        CreateMap<RoleInputDto, Role>()
+            .ForMember(des => des.Permissions, op => op.Ignore())
+            .ForAllMembers(opts => opts.Condition((src, des, srcMember) => srcMember != null));
+
+        CreateMap<Permission, PermissionDisplayDto>()
+            .ForAllMembers(op => op.Condition((src, des, srcMember) => srcMember != null));
+        
+       
     }
 }

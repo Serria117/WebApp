@@ -19,7 +19,6 @@ public class JwtService(IConfiguration config)
 
     public string GenerateToken(User user, DateTime issuedAt)
     {
-        var stopWatch = Stopwatch.StartNew();
         var claims = new[]
         {
             new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),

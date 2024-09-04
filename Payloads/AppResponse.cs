@@ -1,4 +1,5 @@
-﻿using X.PagedList;
+﻿using System.Collections;
+using X.PagedList;
 
 namespace WebApp.Payloads;
 
@@ -13,10 +14,17 @@ public class AppResponse
 
     public static AppResponse SuccessResponse(object data)
     {
+        var count = 1;
+        if (data is IList list)
+        {
+            count = list.Count;
+
+        }
         return new AppResponse
         {
             Data = data,
-            Message = "OK"
+            Message = "OK",
+            TotalCount = count
         };
     }
     
@@ -32,7 +40,7 @@ public class AppResponse
         };
     }
 
-    public static AppResponse SuccessResponsePaged<T>(IPagedList<T> data, int totalCount)
+    public static AppResponse SuccessResponsePaged<T>(IPagedList<T> data)
     {
         return new AppResponse
         {
@@ -40,7 +48,7 @@ public class AppResponse
             Message = "OK",
             PageNumber = data.PageNumber,
             PageSize = data.PageSize,
-            TotalCount = totalCount
+            TotalCount = data.TotalItemCount
         };
     }
 }

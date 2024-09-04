@@ -4,7 +4,7 @@ using BCrypt.Net;
 public static class BcryptService
 {
     private const int Factor = 10;
-    public static string PasswordEncode(this string raw)
+    public static string BCryptHash(this string raw)
     {
         return BCrypt.HashPassword(raw, Factor);
     }
