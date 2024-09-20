@@ -2,7 +2,6 @@ using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using MongoDB.Driver;
@@ -15,9 +14,12 @@ using WebApp.Mongo;
 using WebApp.Mongo.MongoRepositories;
 using WebApp.Repositories;
 using WebApp.Services.CommonService;
+using WebApp.Services.InvoiceService;
 using WebApp.Services.Mappers;
 using WebApp.Services.OrganizationService;
+using WebApp.Services.RestService;
 using WebApp.Services.UserService;
+using WebApp.SignalrConfig;
 
 // Declare variables.
 var builder = WebApplication.CreateBuilder(args);
@@ -25,7 +27,7 @@ var services = builder.Services;
 var config = builder.Configuration;
 var jwtKey = config["JwtSettings:SecretKey"];
 var mongoDbSettings = config.GetSection("MongoDbSettings").Get<MongoDbSettings>()!;
-
+var restSettings = config.GetSection("RestSharp").Get<RestSharpSetting>()!;
 
 string[] origins =
 [
@@ -35,7 +37,7 @@ string[] origins =
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     "http://127.0.0.1:4200",
-    "http://14.225.19.135:4200",
+    "http://14.225.19.135:8888",
     "http://14.225.19.135:5173",
     "http://localhost:24894"
 ];
@@ -44,6 +46,7 @@ string[] origins =
 services.AddDbContext<AppDbContext>(op =>
 {
     op.UseSqlServer(connectionString: config.GetConnectionString("SqlServer"));
+    //op.AddInterceptors(new AuditableEntityInterceptor());
 });
 
 builder.Services.AddControllers()
@@ -74,10 +77,25 @@ services.AddAuthentication(options =>
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey!)),
             NameClaimType = "name"
         };
+        options.Events = new JwtBearerEvents()
+        {
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"];
+                var path = context.HttpContext.Request.Path;
+                if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/progressHub"))
+                {
+                    context.Token = accessToken;
+                }
+                return Task.CompletedTask;
+            }
+        };
     });
 
 // Custom authorization handlers:
 services.AddAuthorization();
+
+services.AddSignalR();
 builder.Services.AddSingleton<IAuthorizationHandler, PermissionAuthorizationHandler>();
 builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissionAuthorizationPolicyProvider>();
 
@@ -90,7 +108,7 @@ builder.Services.AddSwaggerGen(ops =>
         Title = "App",
         Version = "1.0"
     });
-    ops.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme()
+    ops.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Description = "JWT bearer authentication",
         Name = "Authorization",
@@ -125,7 +143,8 @@ services.AddSingleton<IMongoClient, MongoClient>(_ =>
 services.AddScoped<IMongoDatabase>(sp =>
         sp.GetRequiredService<IMongoClient>().GetDatabase(mongoDbSettings.DatabaseName));
 
-services.AddSingleton<IRestClient>(new RestClient());
+services.AddSingleton(restSettings);
+services.AddSingleton<IRestClient>(new RestClient(new RestClientOptions(restSettings.BaseUrl)));
 
 /* Add mapper services */
 services.AddAutoMapper(typeof(UserMapper), typeof(RoleMapper), 
@@ -140,6 +159,8 @@ services.AddTransient<IUserService, UserAppService>();
 services.AddTransient<IRoleAppService, RoleAppService>();
 services.AddTransient<IPermissionAppService, PermissionAppService>();
 services.AddTransient<IOrganizationAppService, OrganizationAppService>();
+services.AddScoped<IRestAppService, RestAppService>();
+services.AddTransient<IInvoiceAppService, InvoiceAppService>();
 
 var app = builder.Build();
 
@@ -156,6 +177,7 @@ app.UseCors(op =>
     op.WithOrigins(origins);
     op.AllowAnyHeader();
     op.AllowAnyMethod();
+    op.AllowCredentials();
     op.Build();
 });
 
@@ -170,6 +192,8 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
+app.MapHub<AppHub>("/progressHub");
+
 app.Run();
 return;
 
@@ -182,6 +206,5 @@ void SeedPermissions(AppDbContext context)
     {
         context.Permissions.Add(new Permission { PermissionName = permission });
     }
-
     context.SaveChanges();
 }

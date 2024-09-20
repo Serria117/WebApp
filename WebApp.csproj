@@ -9,6 +9,7 @@
   <ItemGroup>
     <PackageReference Include="AutoMapper" Version="13.0.1" />
     <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
+    <PackageReference Include="FreeSpire.XLS" Version="14.2.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.8" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.8" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Abstractions" Version="8.0.8" />
@@ -54,6 +55,10 @@
     <_ContentIncludedByDefault Remove="WebApp.Enums\obj\project.assets.json" />
     <_ContentIncludedByDefault Remove="WebApp.Enums\obj\project.packagespec.json" />
     <_ContentIncludedByDefault Remove="WebApp.Enums\obj\WebApp.Enums.csproj.nuget.dgspec.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Services\RestService\Dto\InvDetail\" />
   </ItemGroup>
 
 </Project>

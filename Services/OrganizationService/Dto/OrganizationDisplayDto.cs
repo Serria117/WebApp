@@ -10,6 +10,7 @@ public class OrganizationDisplayDto
     public List<string> Phones { get; init; } = [];
     public string? TaxIdPwd { get; set; }
     public string? InvoicePwd { get; set; }
+    public string? PinCode { get; set; }
     public string? Address { get; set; }
     public string? ContactAddress { get; set; }
     public DateTime? CreateAt { get; set; }

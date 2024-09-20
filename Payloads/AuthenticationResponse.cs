@@ -3,6 +3,7 @@
 public class AuthenticationResponse
 {
     public bool Success { get; set; } = false;
+    public Guid Id { get; set; }
     public string? Message { get; set; }
     public string? AccessToken { get; set; }
     public string? Username { get; set; }

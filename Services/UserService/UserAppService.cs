@@ -3,13 +3,14 @@ using System.Linq.Dynamic.Core;
 using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using WebApp.Core.DomainEntities;
-using WebApp.Mongo.MongoCollections;
+using WebApp.Mongo.DocumentModel;
 using WebApp.Mongo.MongoRepositories;
 using WebApp.Payloads;
 using WebApp.Repositories;
 using WebApp.Services.CommonService;
 using WebApp.Services.UserService.Dto;
 using X.Extensions.PagedList.EF;
+using X.PagedList;
 
 namespace WebApp.Services.UserService
 {
@@ -40,13 +41,7 @@ namespace WebApp.Services.UserService
             var users = await query
                 .OrderBy(page.Sort)
                 .ToPagedListAsync(page.Number, page.Size);
-            return new AppResponse
-            {
-                Data = users.Select(mapper.Map<UserDisplayDto>).ToList(),
-                PageNumber = page.Number,
-                PageSize = page.Size,
-                TotalCount = users.TotalItemCount
-            };
+            return AppResponse.SuccessResponse(mapper.Map<IPagedList<UserDisplayDto>>(users));
         }
 
         public async Task<UserDisplayDto> CreateUser(UserInputDto userDto)
@@ -123,6 +118,7 @@ namespace WebApp.Services.UserService
                 Success = true,
                 Message = "Success",
                 Username = user.Username,
+                Id = user.Id,
                 AccessToken = accessToken,
                 IssueAt = issuedAt,
                 ExpireAt = jwtService.GetExpiration(accessToken)

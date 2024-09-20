@@ -1,11 +1,10 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 
-namespace WebApp.Authentication
+namespace WebApp.Authentication;
+
+public sealed class HasAuthorityAttribute : AuthorizeAttribute
 {
-    public sealed class HasAuthorityAttribute : AuthorizeAttribute
+    public HasAuthorityAttribute(string permission) : base(policy: permission)
     {
-        public HasAuthorityAttribute(string permission) : base(policy: permission)
-        {
-        }
     }
 }

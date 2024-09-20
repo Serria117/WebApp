@@ -18,6 +18,9 @@ public class OrganizationInputDto
     public string? TaxIdPwd { get; set; }
     public string? InvoicePwd { get; set; }
     
+    [MaxLength(50)] [MinLength(3)]
+    public string? PinCode { get; set; }
+    
     [MaxLength(1000)]
     public string? Address { get; set; }
 

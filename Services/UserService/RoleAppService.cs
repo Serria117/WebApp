@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using MongoDB.Driver;
 using WebApp.Core.DomainEntities;
 using WebApp.Enums;
-using WebApp.Mongo.MongoCollections;
+using WebApp.Mongo.DocumentModel;
 using WebApp.Mongo.MongoRepositories;
 using WebApp.Payloads;
 using WebApp.Repositories;

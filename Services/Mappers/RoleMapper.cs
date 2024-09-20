@@ -11,7 +11,8 @@ public class RoleMapper : Profile
     {
         CreateMap<Role, RoleDisplayDto>()
             .ForMember(des => des.Permissions, op => op.MapFrom(r => r.Permissions.Select(p => p.PermissionName).ToHashSet()))
-            .ForMember(des => des.Users, op => op.MapFrom(r => r.Users.Select(u => u.Username).ToHashSet()));
+            .ForMember(des => des.Users, op => op.MapFrom(r => r.Users.Select(u => u.Username).ToHashSet()))
+            .ForAllMembers(op => op.Condition((src, des, srcMember) => srcMember != null));
 
         CreateMap<RoleInputDto, Role>()
             .ForMember(des => des.Permissions, op => op.Ignore())

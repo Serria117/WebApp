@@ -11,13 +11,12 @@ public class OrgMapper : Profile
     public OrgMapper()
     {
         CreateMap<OrganizationInputDto, Organization>()
-            .ForMember(des => des.LastUpdateAt, op => op.MapFrom(_ => DateTime.UtcNow.ToLocalTime()))
+            //.ForMember(des => des.LastUpdateAt, op => op.MapFrom(_ => DateTime.UtcNow.ToLocalTime())) //No more needed
             .ForMember(des => des.UnsignName, op => op.MapFrom(src => src.FullName.UnSign()))
             .ForAllMembers(op => op.Condition((dto, organization, props) => props != null));
 
         CreateMap<Organization, OrganizationDisplayDto>();
-        
-        CreateMap<string?, string?>()
-            .ConvertUsing(str => str.RemoveSpace());
+
+        CreateMap<string?, string?>().ConvertUsing(str => str.RemoveSpace());
     }
 }

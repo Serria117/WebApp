@@ -1,4 +1,5 @@
 ﻿using System.Collections;
+using Microsoft.IdentityModel.Tokens;
 using X.PagedList;
 
 namespace WebApp.Payloads;
@@ -9,60 +10,40 @@ public class AppResponse
     public string? Message { get; set; }
     public long? PageNumber { get; set; }
     public long? PageSize { get; set; }
+    public long? PageCount { get; set; }
     public long? TotalCount { get; set; }
     public object? Data { get; set; }
 
     public static AppResponse SuccessResponse(object data)
     {
-        var count = 1;
-        if (data is IList list)
+        AppResponse response = new()
         {
-            count = list.Count;
-
+            Message = "OK",
+            Data = data,
+            TotalCount = 1
+        };
+        switch (data)
+        {
+            case IList list:
+                response.TotalCount = list.Count;
+                break;
+            case IPagedList<object> pagedList:
+                response.TotalCount = pagedList.TotalItemCount;
+                response.PageNumber = pagedList.PageNumber;
+                response.PageSize = pagedList.PageSize;
+                response.PageCount = pagedList.PageCount;
+                break;
         }
-        return new AppResponse
-        {
-            Data = data,
-            Message = "OK",
-            TotalCount = count
-        };
-    }
-    
-    public static AppResponse SuccessResponse(object data, PageRequest page)
-    {
-        return new AppResponse
-        {
-            Data = data,
-            Message = "OK",
-            PageNumber = page.Number,
-            PageSize = page.Size,
-            TotalCount = page.Total
-        };
+        return response;
     }
 
-    public static AppResponse SuccessResponsePaged<T>(IPagedList<T> data)
+    public static AppResponse ErrorResponse(string mesage, params string[] details)
     {
         return new AppResponse
         {
-            Data = data.ToList(),
-            Message = "OK",
-            PageNumber = data.PageNumber,
-            PageSize = data.PageSize,
-            TotalCount = data.TotalItemCount
-        };
-    }
-}
-
-public class AppResponse<T> : AppResponse
-{
-    public List<T> Items { get; set; } = [];
-    
-    public static AppResponse<T> SuccessResponse(List<T> items, long count)
-    {
-        return new AppResponse<T>
-        {
-            Items = items,
-            Message = "OK"
+            Success = false,
+            Message = mesage,
+            Data = !details.IsNullOrEmpty() ? details.ToList() : null
         };
     }
 }

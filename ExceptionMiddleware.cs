@@ -13,7 +13,8 @@ public class ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionMiddlewa
         catch (Exception ex)
         {
             var tracedId = Ulid.NewUlid().ToString();
-            logger.LogError($"Something went wrong: {ex.Message} - TracedId: {tracedId}");
+            logger.LogWarning("Something went wrong: {message} - TracedId: {tracedId}", ex.Message, tracedId);
+            logger.LogError("Stack trace: {st}", ex.StackTrace);
             await HandleExceptionAsync(httpContext, ex, tracedId);
         }
     }
@@ -21,13 +22,13 @@ public class ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionMiddlewa
     private static Task HandleExceptionAsync(HttpContext context, Exception exception, string tracedId)
     {
         context.Response.ContentType = "application/json";
-        context.Response.StatusCode = (int)HttpStatusCode.BadRequest;
+        context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
 
         var response = new
         {
-            status =context.Response.StatusCode,
+            status = context.Response.StatusCode,
             tracedId = tracedId,
-            message = "Something wrong with your request.",
+            message = "Something went wrong while the server's processing your request. Please use the traceId to report the error.",
             detailed = exception.Message // This can be omitted in production to avoid exposing sensitive information
         };
 
