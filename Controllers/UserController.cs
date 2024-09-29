@@ -9,15 +9,14 @@ using WebApp.Services.UserService.Dto;
 namespace WebApp.Controllers;
 
 [ApiController, Route("/api/user")]
-public class UserController(IUserService userService) : ControllerBase
+public class UserController(IUserAppService userAppService) : ControllerBase
 {
-    [HttpPost("create")]
-    [HasAuthority(Permissions.UserCreate)]
+    [HttpPost("create"), HasAuthority(Permissions.UserCreate)]
     public async Task<IActionResult> CreateUser(UserInputDto dto)
     {
         try
         {
-            var res = await userService.CreateUser(dto);
+            var res = await userAppService.CreateUser(dto);
             return Ok(res);
         }
         catch (Exception e)
@@ -26,14 +25,13 @@ public class UserController(IUserService userService) : ControllerBase
         }
     }
 
-    [HttpGet("all")]
-    [HasAuthority(Permissions.UserView)]
+    [HttpGet("all")] [HasAuthority(Permissions.UserView)]
     public async Task<IActionResult> GetAll([FromQuery] RequestParam req)
     {
         try
         {
             var paging = PageRequest.GetPage(req);
-            var res = await userService.GetAllUsers(paging);
+            var res = await userAppService.GetAllUsers(paging);
             return Ok(res);
         }
         catch (Exception)
@@ -42,13 +40,12 @@ public class UserController(IUserService userService) : ControllerBase
         }
     }
 
-    [HttpGet("get-roles/{userId:guid}")]
-    [HasAuthority(Permissions.UserView)]
+    [HttpGet("get-roles/{userId:guid}")] [HasAuthority(Permissions.UserView)]
     public async Task<IActionResult> GetRolesFromUser(Guid userId)
     {
         try
         {
-            var res = await userService.FindRolesByUser(userId);
+            var res = await userAppService.FindRolesByUser(userId);
             return Ok(res);
         }
         catch (Exception)
@@ -57,19 +54,17 @@ public class UserController(IUserService userService) : ControllerBase
         }
     }
 
-    [HttpPut("unlock/{userId:guid}")]
-    [HasAuthority(Permissions.UserUpdate)]
+    [HttpPut("unlock/{userId:guid}")] [HasAuthority(Permissions.UserUpdate)]
     public async Task<IActionResult> UnlockUser(Guid userId)
     {
-        await userService.UnlockUser(userId);
+        await userAppService.UnlockUser(userId);
         return Ok(new { message = "user unlocked" });
     }
 
-    [HttpPut("role-update/{userId:guid}")]
-    [HasAuthority(Permissions.UserUpdate)]
+    [HttpPut("role-update/{userId:guid}")] [HasAuthority(Permissions.UserUpdate)]
     public async Task<IActionResult> UpdateRoles(Guid userId, List<int> roleIds)
     {
-        var result = await userService.ChangeUserRoles(userId, roleIds);
+        var result = await userAppService.ChangeUserRoles(userId, roleIds);
         return result.Success ? Ok(result) : BadRequest(result);
     }
 }

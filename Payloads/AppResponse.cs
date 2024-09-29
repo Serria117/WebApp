@@ -14,6 +14,14 @@ public class AppResponse
     public long? TotalCount { get; set; }
     public object? Data { get; set; }
 
+    public static AppResponse Ok()
+    {
+        return new AppResponse{Success = true};
+    }
+    public static AppResponse Ok(string message)
+    {
+        return new AppResponse{Success = true, Message = message};
+    }
     public static AppResponse SuccessResponse(object data)
     {
         AppResponse response = new()

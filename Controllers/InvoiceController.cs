@@ -9,9 +9,7 @@ using WebApp.Services.RestService.Dto;
 
 namespace WebApp.Controllers;
 
-[ApiController]
-[Route("/api/invoice")]
-[Authorize]
+[ApiController] [Route("/api/invoice")] [Authorize]
 public class InvoiceController(IRestAppService restService,
                                IInvoiceAppService invService) : ControllerBase
 {
@@ -33,7 +31,7 @@ public class InvoiceController(IRestAppService restService,
     [HttpGet("find/{taxId}")]
     public async Task<IActionResult> FindInvoice(string taxId, [FromQuery] InvoiceParams parameters)
     {
-        var result = await invService.GetInvoices(taxId, parameters);
+        var result = await invService.GetInvoices(taxId, parameters.Valid());
         return Ok(result);
     }
 
@@ -41,20 +39,17 @@ public class InvoiceController(IRestAppService restService,
     public async Task<IActionResult> ExtractInvoice(string token, string from, string to)
     {
         var result = await restService.GetInvoiceListAsync(token, from, to);
-        if (result is { Success: true, Data: not null })
-        {
-            List<InvoiceDisplayDto> details = [];
-            foreach (var invoice in (List<InvoiceDisplayDto>)result.Data)
-            {
-                var invDetail = await restService.GetInvoiceDetail(token, invoice);
-                if (invDetail is { Success: true, Data: not null })
-                    details.Add((InvoiceDisplayDto)invDetail.Data);
-            }
+        if (result is not { Success: true, Data: not null }) return BadRequest(result);
 
-            return Ok(AppResponse.SuccessResponse(details));
+        List<InvoiceDisplayDto> details = [];
+        foreach (var invoice in (List<InvoiceDisplayDto>)result.Data)
+        {
+            var invDetail = await restService.GetInvoiceDetail(token, invoice);
+            if (invDetail is { Success: true, Data: not null })
+                details.Add((InvoiceDisplayDto)invDetail.Data);
         }
 
-        return BadRequest(result);
+        return Ok(AppResponse.SuccessResponse(details));
     }
 
     [HttpPost("sync")]
@@ -63,16 +58,13 @@ public class InvoiceController(IRestAppService restService,
         var res = await invService.SyncInvoices(request.Token, request.From, request.To);
         return Ok(res);
     }
-    
+
     [HttpGet("download/{taxId}")]
     public async Task<IActionResult> DownloadInvoice(string taxId, string from, string to)
     {
         var stream = await invService.ExportExcel(taxId, from, to);
-        var ulid = Ulid.NewUlid();
-        var fileName = $"{taxId}_{from}_{to}__{ulid}.xlsx";
+        var fileName = $"{taxId}_{from}_{to}.xlsx";
         Response.Headers["X-Filename"] = fileName;
-        return File(stream, 
-                    ContentType.ApplicationOfficeXlsx, 
-                    fileName);
+        return File(stream, ContentType.ApplicationOfficeXlsx, fileName);
     }
 }

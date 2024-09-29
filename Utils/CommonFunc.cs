@@ -2,7 +2,7 @@
 
 namespace WebApp.Utils;
 
-public class CommonFunc
+public static class CommonFunc
 {
     public static List<int> GetMonthsInRange(DateTime fromDate, DateTime toDate)
     {
@@ -27,7 +27,6 @@ public class CommonFunc
                 currentYear++;
             }
         }
-
         return months;
     }
 

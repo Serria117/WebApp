@@ -6,35 +6,20 @@ public class InvoiceParams
     public int? InvoiceNumber { get; set; }
     public string? From { get; set; }
     public string? To { get; set; }
+    public int? Page { get; set; }
+    public int? Size { get; set; }
     
-    private int _page;
-    public int Page
+    public InvoiceParams Valid()
     {
-        get => _page;
-        set
+        if (Size is <= 0 or > 1000 or null)
         {
-            if (value is <= 0)
-            {
-                _page = 1;
-            }
-
-            _page = value;
+            Size = 10;
         }
-    }
 
-    private int _size;
-    public int Size
-    {
-        get => _size;
-        set
+        if (Page is <= 0 or > 1000 or null)
         {
-            _size = value switch
-            {
-                <= 0 => 10,
-                > 50 => 50,
-                _ => _size
-            };
-            _size = value;
+            Page = 1;
         }
+        return this;
     }
 }

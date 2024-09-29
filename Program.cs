@@ -4,21 +4,16 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
-using MongoDB.Driver;
 using RestSharp;
 using WebApp;
 using WebApp.Authentication;
 using WebApp.Core.Data;
 using WebApp.Core.DomainEntities;
-using WebApp.Mongo;
-using WebApp.Mongo.MongoRepositories;
+using WebApp.Register;
 using WebApp.Repositories;
 using WebApp.Services.CommonService;
-using WebApp.Services.InvoiceService;
 using WebApp.Services.Mappers;
-using WebApp.Services.OrganizationService;
 using WebApp.Services.RestService;
-using WebApp.Services.UserService;
 using WebApp.SignalrConfig;
 
 // Declare variables.
@@ -26,27 +21,15 @@ var builder = WebApplication.CreateBuilder(args);
 var services = builder.Services;
 var config = builder.Configuration;
 var jwtKey = config["JwtSettings:SecretKey"];
-var mongoDbSettings = config.GetSection("MongoDbSettings").Get<MongoDbSettings>()!;
-var restSettings = config.GetSection("RestSharp").Get<RestSharpSetting>()!;
 
-string[] origins =
-[
-    "http://localhost:8888",
-    "http://localhost:8080",
-    "http://localhost:4200",
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "http://127.0.0.1:4200",
-    "http://14.225.19.135:8888",
-    "http://14.225.19.135:5173",
-    "http://localhost:24894"
-];
+var restSettings = config.GetSection("RestSharp").Get<RestSharpSetting>()!;
+var origins = config.GetSection("AllowedOrigins").Get<string[]>() ?? [];   
 
 // Add services to the container.
-services.AddDbContext<AppDbContext>(op =>
+services.AddDbContext<AppDbContext>((serviceProvider,options) =>
 {
-    op.UseSqlServer(connectionString: config.GetConnectionString("SqlServer"));
-    //op.AddInterceptors(new AuditableEntityInterceptor());
+    options.UseSqlServer(connectionString: config.GetConnectionString("SqlServer"));
+   // options.AddInterceptors(serviceProvider.GetRequiredService<AuditableEntityInterceptor>());
 });
 
 builder.Services.AddControllers()
@@ -94,14 +77,14 @@ services.AddAuthentication(options =>
 
 // Custom authorization handlers:
 services.AddAuthorization();
+services.AddSingleton<IAuthorizationHandler, PermissionAuthorizationHandler>();
+services.AddSingleton<IAuthorizationPolicyProvider, PermissionAuthorizationPolicyProvider>();
 
 services.AddSignalR();
-builder.Services.AddSingleton<IAuthorizationHandler, PermissionAuthorizationHandler>();
-builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissionAuthorizationPolicyProvider>();
 
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(ops =>
+services.AddEndpointsApiExplorer();
+
+services.AddSwaggerGen(ops =>
 {
     ops.SwaggerDoc("v1", new OpenApiInfo()
     {
@@ -136,31 +119,21 @@ builder.Services.AddSwaggerGen(ops =>
     });
 });
 
-services.AddSingleton(mongoDbSettings);
-services.AddSingleton<IMongoClient, MongoClient>(_ =>
-        new MongoClient(mongoDbSettings.ConnectionString));
-
-services.AddScoped<IMongoDatabase>(sp =>
-        sp.GetRequiredService<IMongoClient>().GetDatabase(mongoDbSettings.DatabaseName));
-
 services.AddSingleton(restSettings);
 services.AddSingleton<IRestClient>(new RestClient(new RestClientOptions(restSettings.BaseUrl)));
 
 /* Add mapper services */
 services.AddAutoMapper(typeof(UserMapper), typeof(RoleMapper), 
-    typeof(OrgMapper), typeof(PagedMapper));
+    typeof(OrgMapper), typeof(PagedMapper), typeof(RegionMapper));
 
-/* Add application services */
 services.AddHttpContextAccessor();
 services.AddSingleton<JwtService>();
-services.AddScoped<IMongoRepository, MongoRepository>();
+
 services.AddScoped(typeof(IAppRepository<,>), typeof(AppRepository<,>));
-services.AddTransient<IUserService, UserAppService>();
-services.AddTransient<IRoleAppService, RoleAppService>();
-services.AddTransient<IPermissionAppService, PermissionAppService>();
-services.AddTransient<IOrganizationAppService, OrganizationAppService>();
-services.AddScoped<IRestAppService, RestAppService>();
-services.AddTransient<IInvoiceAppService, InvoiceAppService>();
+
+/* Add application services */
+services.AddAppServices();
+services.AddMongoServices(config);
 
 var app = builder.Build();
 
@@ -182,6 +155,7 @@ app.UseCors(op =>
 });
 
 app.UseMiddleware<ExceptionMiddleware>();
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();

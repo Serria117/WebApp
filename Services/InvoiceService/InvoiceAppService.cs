@@ -8,6 +8,7 @@ using WebApp.Mongo.MongoRepositories;
 using WebApp.Payloads;
 using WebApp.Services.InvoiceService.dto;
 using WebApp.Services.RestService;
+using WebApp.Services.RiskCompanyService;
 using WebApp.SignalrConfig;
 using WebApp.Utils;
 
@@ -22,21 +23,23 @@ public interface IInvoiceAppService
 
 public class InvoiceAppService(IMongoRepository mongo,
                                IRestAppService restService,
-                               ILogger<InvoiceAppService> logger,
+                               ILogger<InvoiceAppService> logger, 
+                               IRiskCompanyAppService riskService,
                                IHubContext<AppHub> hubContext) : IInvoiceAppService
 {
     public async Task<AppResponse> GetInvoices(string taxCode, InvoiceParams param)
     {
         var invoiceList = await mongo.FindInvoices(taxCode: taxCode,
-                                                   page: param.Page, size: param.Size,
+                                                   page: param.Page!.Value, size: param.Size!.Value,
                                                    from: param.From, to: param.To,
                                                    seller: param.SellerKeyword, invNo: param.InvoiceNumber
         );
 
         return new AppResponse
         {
-            Data = ((List<InvoiceDetailDoc>)invoiceList.Data).Select(inv => inv.ToDisplayModel())
-                                                             .ToList(),
+            Data = ((List<InvoiceDetailDoc>)invoiceList.Data)
+                   .Select(inv => inv.ToDisplayModel())
+                   .ToList(),
             Message = "Ok",
             TotalCount = invoiceList.Total,
             PageNumber = param.Page,
@@ -120,7 +123,7 @@ public class InvoiceAppService(IMongoRepository mongo,
     public async Task<byte[]> ExportExcel(string taxCode, string from, string to)
     {
         var invoiceList = await mongo.FindInvoices(taxCode: taxCode,
-                                                   page: 1, size: 10000,
+                                                   page: 1, size: 10_000,
                                                    from: from, to: to,
                                                    seller: null, invNo: null
         );
@@ -185,7 +188,7 @@ public class InvoiceAppService(IMongoRepository mongo,
             "Trạng thái", //11
             "Loại hóa đơn" //12
         ];
-        
+
         for (var i = 0; i < detailTitles.Count; i++)
         {
             sheetDetail.Range[titleRow, i + 1].Value = detailTitles[i];
@@ -215,19 +218,19 @@ public class InvoiceAppService(IMongoRepository mongo,
                 sheetDetail.Range[startRow, 4].Value2 = inv.SellerName;
                 sheetDetail.Range[startRow, 5].Value2 = item.Name;
                 sheetDetail.Range[startRow, 6].Value2 = item.UnitCount;
-                
+
                 sheetDetail.Range[startRow, 7].Value2 = item.UnitPrice;
                 sheetDetail.Range[startRow, 7].NumberFormat = "#,##0";
-                
+
                 sheetDetail.Range[startRow, 8].Value2 = item.PreTaxPrice;
                 sheetDetail.Range[startRow, 8].NumberFormat = "#,##0";
-                
+
                 sheetDetail.Range[startRow, 9].Value2 = item.Rate;
                 sheetDetail.Range[startRow, 9].NumberFormat = "0.0%";
-                
+
                 sheetDetail.Range[startRow, 10].Value2 = item.Discount;
                 sheetDetail.Range[startRow, 10].NumberFormat = "0.0%";
-                
+
                 sheetDetail.Range[startRow, 11].Value2 = item.Tax;
                 sheetDetail.Range[startRow, 11].NumberFormat = "#,##0";
                 sheetDetail.Range[startRow, 12].Value2 = inv.CreationDate?.ToLocalTime();
@@ -249,51 +252,54 @@ public class InvoiceAppService(IMongoRepository mongo,
                 sheetSummary.Range[startRow, 7].Value2 = inv.IssueDate?.ToLocalTime();
                 sheetSummary.Range[startRow, 8].Value2 = inv.TotalPrice;
                 sheetSummary.Range[startRow, 8].NumberFormat = "#,##0";
-                
+
                 sheetSummary.Range[startRow, 9].Value2 = inv.Vat;
                 sheetSummary.Range[startRow, 9].NumberFormat = "#,##0";
-                
+
                 sheetSummary.Range[startRow, 10].Value2 = inv.TotalPriceVat;
                 sheetSummary.Range[startRow, 10].NumberFormat = "#,##0";
-                
+
                 sheetSummary.Range[startRow, 11].Value2 = inv.Status;
                 sheetSummary.Range[startRow, 12].Value2 = inv.InvoiceType;
 
                 #endregion
             }
+
             startRow++;
         }
-        
+
         sheetDetail.Range[4, 1, startRow - 1, 3].AutoFitColumns();
         sheetDetail.Range[4, 6, startRow - 1, 16].AutoFitColumns();
-        
+
         sheetSummary.Range[4, 1, startRow - 1, 3].AutoFitColumns();
         sheetSummary.Range[4, 5, startRow - 1, 12].AutoFitColumns();
 
         #region Formula and filter
-        
+
         sheetSummary.AutoFilters.Range = sheetSummary.Range[$"A{titleRow}:X{startRow - 1}"];
         sheetDetail.AutoFilters.Range = sheetDetail.Range[$"A{titleRow}:X{startRow - 1}"];
-        
+
         for (var i = 8; i <= 10; i++)
         {
-            sheetSummary.Range[titleRow - 1, i].FormulaR1C1 = $"=SUBTOTAL(9,R5C{i}:R{startRow-1}C{i})";
+            sheetSummary.Range[titleRow - 1, i].FormulaR1C1 = $"=SUBTOTAL(9,R5C{i}:R{startRow - 1}C{i})";
             sheetSummary.Range[titleRow - 1, i].NumberFormat = "#,##0";
+            sheetSummary.Range[titleRow - 1, i].Style.Font.IsBold = true;
         }
-        
+
         for (var i = 7; i <= 11; i++)
         {
-            sheetDetail.Range[titleRow - 1, i].FormulaR1C1 = $"=SUBTOTAL(9,R5C{i}:R{startRow-1}C{i})";
+            sheetDetail.Range[titleRow - 1, i].FormulaR1C1 = $"=SUBTOTAL(9,R5C{i}:R{startRow - 1}C{i})";
             sheetDetail.Range[titleRow - 1, i].NumberFormat = "#,##0";
+            sheetDetail.Range[titleRow - 1, i].Style.Font.IsBold = true;
         }
 
         #endregion
-        
+
         foreach (var cell in sheetDetail.Range[4, 1, startRow - 1, 16])
         {
             cell.BorderAround(LineStyleType.Thin);
         }
-        
+
         foreach (var cell in sheetSummary.Range[4, 1, startRow - 1, 12])
         {
             cell.BorderAround(LineStyleType.Thin);

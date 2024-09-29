@@ -13,10 +13,8 @@ public interface IAppRepository<T, in TK> where T : BaseEntity<TK>
     Task<T> CreateAsync(T entity);
     Task CreateManyAsync(IEnumerable<T> entities);
     IQueryable<T> Find(Expression<Func<T, bool>> condition, params string[] include);
-
     IQueryable<T> Find(Expression<Func<T, bool>> condition, string? sortBy = "Id", string? order = SortOrder.ASC,
         params string[] include);
-
     Task<List<T>> FindAllAsync(int skip, int take, string? sortProperty, string? include = null);
     Task<T?> FindByIdAsync(TK id);
     Task<T> UpdateAsync(T entity);
@@ -26,19 +24,18 @@ public interface IAppRepository<T, in TK> where T : BaseEntity<TK>
     IQueryable<T> GetQueryable();
     Task<int> CountAsync();
     Task<bool> SoftDeleteManyAsync(params TK[] ids);
+    IQueryable<T> FindAndSort(Expression<Func<T, bool>> condition, string[] props, string[] sortStrings);
 }
 
 public class AppRepository<T, TK> : IAppRepository<T, TK> where T : BaseEntity<TK>
 {
     private readonly AppDbContext _db;
     private readonly DbSet<T> _dbSet;
-    private readonly IHttpContextAccessor? _accessor;
 
-    public AppRepository(AppDbContext dbContext, IHttpContextAccessor? accessor)
+    public AppRepository(AppDbContext dbContext)
     {
         _db = dbContext;
         _dbSet = _db.Set<T>();
-        _accessor = accessor;
     }
 
     public IQueryable<T> GetQueryable()
@@ -64,10 +61,6 @@ public class AppRepository<T, TK> : IAppRepository<T, TK> where T : BaseEntity<T
 
     public async Task<T> CreateAsync(T entity)
     {
-        if (entity is IBaseEntityAuditable baseEntity && _accessor is not null)
-        {
-            baseEntity.CreateBy = _accessor.HttpContext?.User.Identity?.Name;
-        }
         var saved = (await _dbSet.AddAsync(entity)).Entity;
         await _db.SaveChangesAsync();
         return saved;
@@ -83,7 +76,7 @@ public class AppRepository<T, TK> : IAppRepository<T, TK> where T : BaseEntity<T
         return query.OrderBy("Id DESC");
     }
 
-    public IQueryable<T> Find(Expression<Func<T, bool>> condition, string? sortBy = "Id", string? order = "ASC",
+    public IQueryable<T> Find(Expression<Func<T, bool>> condition, string? sortBy = "Id", string? order = "DESC",
         params string[] include)
     {
         var query = _dbSet.Where(condition);
@@ -95,6 +88,22 @@ public class AppRepository<T, TK> : IAppRepository<T, TK> where T : BaseEntity<T
         return query.OrderBy($"{sortBy} {order}");
     }
 
+    public IQueryable<T> FindAndSort(Expression<Func<T, bool>> condition, string[] props, string[] sortStrings)
+    {
+        var query = _dbSet.Where(condition);
+        if (!props.IsNullOrEmpty())
+        {
+            query = props.Aggregate(query, (current, prop) => current.Include(prop));
+        }
+
+        if (!sortStrings.IsNullOrEmpty())
+        {
+            query = sortStrings.Aggregate(query, (current, sort) => current.OrderBy(sort));
+        }
+
+        return query;
+    }
+    
     public async Task CreateManyAsync(IEnumerable<T> entities)
     {
         await _dbSet.AddRangeAsync(entities);

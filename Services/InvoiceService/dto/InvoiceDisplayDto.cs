@@ -21,6 +21,8 @@ public class InvoiceDisplayDto
     public int? StatusNumber { get; set; }
     public string? InvoiceType { get; set; } //Loại hóa đơn
     public int? InvoiceTypeNumber { get; set; } //Mã loại hóa đơn
+
+    public bool? Risk { get; set; } =  false;
     
 }
 

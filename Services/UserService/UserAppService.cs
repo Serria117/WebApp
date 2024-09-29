@@ -14,7 +14,7 @@ using X.PagedList;
 
 namespace WebApp.Services.UserService
 {
-    public interface IUserService
+    public interface IUserAppService
     {
         Task<UserDisplayDto> CreateUser(UserInputDto user);
         Task<AuthenticationResponse> Authenticate(UserLoginDto login);
@@ -27,13 +27,13 @@ namespace WebApp.Services.UserService
         Task<AppResponse> ChangeUserRoles(Guid id, List<int> roleIds);
     }
 
-    public class UserAppService(
+    public class UserAppAppService(
         IMapper mapper,
         IAppRepository<User, Guid> userRepository,
         IMongoRepository mongoRepository,
         JwtService jwtService,
         IConfiguration configuration,
-        IAppRepository<Role, int> roleRepository) : IUserService
+        IAppRepository<Role, int> roleRepository) : IUserAppService
     {
         public async Task<AppResponse> GetAllUsers(PageRequest page)
         {

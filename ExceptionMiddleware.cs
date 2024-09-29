@@ -1,4 +1,5 @@
 ﻿using System.Net;
+using WebApp.Enums;
 
 namespace WebApp;
 
@@ -21,7 +22,7 @@ public class ExceptionMiddleware(RequestDelegate next, ILogger<ExceptionMiddlewa
 
     private static Task HandleExceptionAsync(HttpContext context, Exception exception, string tracedId)
     {
-        context.Response.ContentType = "application/json";
+        context.Response.ContentType = ContentType.ApplicationJson;
         context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
 
         var response = new

@@ -1,4 +1,6 @@
-﻿namespace WebApp.Services.OrganizationService.Dto;
+﻿using WebApp.Services.RegionService.Dto;
+
+namespace WebApp.Services.OrganizationService.Dto;
 
 public class OrganizationDisplayDto
 {
@@ -16,4 +18,6 @@ public class OrganizationDisplayDto
     public DateTime? CreateAt { get; set; }
     public DateTime? LastUpdateAt { get; set; }
     public string? CreateBy { get; set; }
+    public TaxOfficeDisplayDto? TaxOffice { get; set; }
+    public DistrictDisplayDto? District { get; set; }
 }

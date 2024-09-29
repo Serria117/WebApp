@@ -1,6 +1,7 @@
 ﻿using System.Linq.Dynamic.Core;
 using System.Text.Json;
 using AutoMapper;
+using AutoMapper.Configuration.Conventions;
 using Microsoft.EntityFrameworkCore;
 using WebApp.Authentication;
 using WebApp.Core.DomainEntities;
@@ -25,6 +26,7 @@ public interface IOrganizationAppService
 }
 
 public class OrganizationAppService(IAppRepository<Organization, Guid> orgRepo,
+                                    IAppRepository<Province, int> provinceRepo,
                                     IMapper mapper) : IOrganizationAppService
 {
     public async Task<AppResponse> Create(OrganizationInputDto dto)
@@ -45,17 +47,18 @@ public class OrganizationAppService(IAppRepository<Organization, Guid> orgRepo,
 
     public async Task<AppResponse> Find(PageRequest page)
     {
-        var keyword = page.Keyword.RemoveSpace();
+        var keyword = page.Keyword.RemoveSpace()?.UnSign();
+        var province = provinceRepo.GetQueryable();
         var pagedResult = await orgRepo.Find(condition: o => !o.Deleted && (string.IsNullOrEmpty(keyword) ||
                                                                             o.UnsignName.Contains(keyword) ||
                                                                             o.ShortName == null ||
                                                                             o.ShortName.Contains(keyword) ||
                                                                             o.TaxId.Contains(keyword)),
-                                             sortBy: page.SortBy,
-                                             order: page.OrderBy)
+                                             sortBy: page.SortBy, order: page.OrderBy,
+                                             include: [nameof(Organization.TaxOffice), nameof(Organization.District)])
+                                       .AsSplitQuery()
                                        .AsNoTracking()
                                        .ToPagedListAsync(page.Number, page.Size);
-
         var dtoResult = mapper.Map<IPagedList<OrganizationDisplayDto>>(pagedResult);
         return AppResponse.SuccessResponse(dtoResult);
     }

@@ -26,6 +26,7 @@ public static class ExtensionFunc
             CreationDate = doc.Tdlap?.ToLocalTime(),
             SigningDate = doc.Nky?.ToLocalTime(),
             IssueDate = doc.Ncma?.ToLocalTime(),
+            Risk = doc.Risk ?? false,
             Status = doc.Tthai switch
             {
                 1 => "Hóa đơn mới",
