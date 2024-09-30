@@ -28,7 +28,7 @@ namespace WebApp.Services.UserService
         IAppRepository<User, Guid> userRepository,
         IAppRepository<Role, int> roleRepository,
         IAppRepository<Permission, int> permissionRepository,
-        IMongoRepository mongoRepository,
+        IUserMongoRepository userMongoRepository,
         IHttpContextAccessor http,
         ILogger<RoleAppService> logger,
         IMapper mapper) : IRoleAppService
@@ -128,7 +128,7 @@ namespace WebApp.Services.UserService
                     Permissions = u.Roles.SelectMany(r => r.Permissions).Select(p => p.PermissionName).ToList()
                 })
                 .ToList();
-            await mongoRepository.UpdateAllUser(userDocs);
+            await userMongoRepository.UpdateAllUser(userDocs);
         }
 
 

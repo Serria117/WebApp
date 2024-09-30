@@ -27,7 +27,7 @@ public interface IOrganizationAppService
 
 public class OrganizationAppService(IAppRepository<Organization, Guid> orgRepo,
                                     IAppRepository<Province, int> provinceRepo,
-                                    IMapper mapper) : IOrganizationAppService
+                                    IMapper mapper) : AppServiceBase, IOrganizationAppService
 {
     public async Task<AppResponse> Create(OrganizationInputDto dto)
     {

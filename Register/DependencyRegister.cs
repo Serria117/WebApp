@@ -1,6 +1,7 @@
 ﻿using MongoDB.Driver;
 using WebApp.Mongo;
 using WebApp.Mongo.MongoRepositories;
+using WebApp.Repositories;
 using WebApp.Services.BalanceSheetService;
 using WebApp.Services.InvoiceService;
 using WebApp.Services.OrganizationService;
@@ -21,12 +22,15 @@ public static class DependencyRegister
 
         s.AddScoped<IMongoDatabase>(provider => provider.GetRequiredService<IMongoClient>()
                                                                .GetDatabase(mongoDbSettings.DatabaseName));
-        s.AddScoped<IMongoRepository, MongoRepository>();
+        s.AddScoped<IInvoiceMongoRepository, InvoiceMongoRepository>();
+        s.AddScoped<IUserMongoRepository, UserMongoRepository>();
     }
 
     public static void AddAppServices(this IServiceCollection s)
     {
+        s.AddScoped(typeof(IAppRepository<,>), typeof(AppRepository<,>));
         s.AddScoped<IRestAppService, RestAppService>();
+        
         s.AddTransient<IUserAppService, UserAppAppService>();
         s.AddTransient<IRoleAppService, RoleAppService>();
         s.AddTransient<IPermissionAppService, PermissionAppService>();

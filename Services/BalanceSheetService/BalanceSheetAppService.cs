@@ -18,7 +18,7 @@ public class BalanceSheetAppService(IAppRepository<Account, int> accountRepo,
                                     IAppRepository<BalanceSheetDetail, int> balanceSheetDetailRepo,
                                     IAppRepository<ImportedBalanceSheet, int> balanceSheetImportedRepo,
                                     IAppRepository<ImportedBalanceSheetDetail, int> importedBalanceSheetRepo,
-                                    ILogger<BalanceSheetAppService> logger) : IBalanceSheetAppService
+                                    ILogger<BalanceSheetAppService> logger) : AppServiceBase, IBalanceSheetAppService
 {
     public async Task<AppResponse> ProcessBalanceSheet(Guid orgId, int year, IFormFile file)
     {

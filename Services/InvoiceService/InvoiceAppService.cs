@@ -21,15 +21,16 @@ public interface IInvoiceAppService
     Task<byte[]> ExportExcel(string taxCode, string from, string to);
 }
 
-public class InvoiceAppService(IMongoRepository mongo,
+public class InvoiceAppService(//IMongoRepository mongo,
+                               IInvoiceMongoRepository mongoInvoice,
                                IRestAppService restService,
                                ILogger<InvoiceAppService> logger, 
                                IRiskCompanyAppService riskService,
-                               IHubContext<AppHub> hubContext) : IInvoiceAppService
+                               IHubContext<AppHub> hubContext) : AppServiceBase, IInvoiceAppService
 {
     public async Task<AppResponse> GetInvoices(string taxCode, InvoiceParams param)
     {
-        var invoiceList = await mongo.FindInvoices(taxCode: taxCode,
+        var invoiceList = await mongoInvoice.FindInvoices(taxCode: taxCode,
                                                    page: param.Page!.Value, size: param.Size!.Value,
                                                    from: param.From, to: param.To,
                                                    seller: param.SellerKeyword, invNo: param.InvoiceNumber
@@ -58,7 +59,7 @@ public class InvoiceAppService(IMongoRepository mongo,
             var invoiceList = (List<InvoiceDisplayDto>)result.Data;
             List<InvoiceDetailModel> invoiceToSave = [];
             var countAdd = 1;
-            var existedInvoices = await mongo.GetExistingInvoiceIdsAsync(invoiceList.Select(inv => inv.Id).ToList());
+            var existedInvoices = await mongoInvoice.GetExistingInvoiceIdsAsync(invoiceList.Select(inv => inv.Id).ToList());
             Console.WriteLine(
                 $"Found {existedInvoices.Count}/{invoiceList.Count} Invoices already existed in collection, those record will be ignored");
 
@@ -96,7 +97,7 @@ public class InvoiceAppService(IMongoRepository mongo,
                         WriteIndented = true // optional, for pretty printing
                     };
                     await hubContext.Clients.All.SendAsync("writeInvoices", "Writing to database...");
-                    var isInserted = await mongo.InsertInvoicesAsync(invoiceToSave
+                    var isInserted = await mongoInvoice.InsertInvoicesAsync(invoiceToSave
                                                                      .Select(i => i.DeserializeToBson(jsonOption))
                                                                      .ToList());
                     if (isInserted)
@@ -122,7 +123,7 @@ public class InvoiceAppService(IMongoRepository mongo,
 
     public async Task<byte[]> ExportExcel(string taxCode, string from, string to)
     {
-        var invoiceList = await mongo.FindInvoices(taxCode: taxCode,
+        var invoiceList = await mongoInvoice.FindInvoices(taxCode: taxCode,
                                                    page: 1, size: 10_000,
                                                    from: from, to: to,
                                                    seller: null, invNo: null

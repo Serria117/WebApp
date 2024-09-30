@@ -30,7 +30,7 @@ namespace WebApp.Services.UserService
     public class UserAppAppService(
         IMapper mapper,
         IAppRepository<User, Guid> userRepository,
-        IMongoRepository mongoRepository,
+        IUserMongoRepository userMongoRepository,
         JwtService jwtService,
         IConfiguration configuration,
         IAppRepository<Role, int> roleRepository) : IUserAppService
@@ -62,7 +62,7 @@ namespace WebApp.Services.UserService
 
             var created = await userRepository.CreateAsync(user);
 
-            await mongoRepository.InsertUser(await MapToMongo(created));
+            await userMongoRepository.InsertUser(await MapToMongo(created));
 
             return mapper.Map<UserDisplayDto>(created);
         }
@@ -185,14 +185,14 @@ namespace WebApp.Services.UserService
             if (user is not null)
             {
                 var userDoc = await MapToMongo(user);
-                await mongoRepository.InsertUser(userDoc);
+                await userMongoRepository.InsertUser(userDoc);
             }
         }
 
         private async Task UpdateUserWithMongo(User user)
         {
             var userDoc = await MapToMongo(user);
-            await mongoRepository.UpdateUser(userDoc);
+            await userMongoRepository.UpdateUser(userDoc);
         }
 
         private async Task<User?> FindUserByUsername(string name)

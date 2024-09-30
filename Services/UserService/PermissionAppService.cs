@@ -18,7 +18,7 @@ namespace WebApp.Services.UserService
     public class PermissionAppService(IAppRepository<User, Guid> userRepo, 
         IAppRepository<Permission, int> permissionRepo,
         IMapper mapper,
-        IMongoRepository mongoRepo) : IPermissionAppService
+        IUserMongoRepository userMongoRepository) : IPermissionAppService
     {
         public async Task<List<string>> GetPermissions(Guid userId)
         {
@@ -32,7 +32,7 @@ namespace WebApp.Services.UserService
 
         public async Task<List<string>> GetPermissionsFromMongo(Guid userId)
         {
-            return [.. (await mongoRepo.GetUser(userId)).Permissions];
+            return [.. (await userMongoRepository.GetUser(userId)).Permissions];
         }
 
         public async Task<AppResponse> GetAllPermissionsInSystem()

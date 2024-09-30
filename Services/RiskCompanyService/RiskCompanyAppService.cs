@@ -19,7 +19,7 @@ public interface IRiskCompanyAppService
     Task<bool> IsInvoiceRisk(string taxId);
 }
 
-public class RiskCompanyAppService(IAppRepository<RiskCompany, int> riskCompanyRepo) : IRiskCompanyAppService
+public class RiskCompanyAppService(IAppRepository<RiskCompany, int> riskCompanyRepo) : AppServiceBase, IRiskCompanyAppService
 {
     public async Task<AppResponse> GetAsync(PageRequest page)
     {

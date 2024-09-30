@@ -129,7 +129,6 @@ services.AddAutoMapper(typeof(UserMapper), typeof(RoleMapper),
 services.AddHttpContextAccessor();
 services.AddSingleton<JwtService>();
 
-services.AddScoped(typeof(IAppRepository<,>), typeof(AppRepository<,>));
 
 /* Add application services */
 services.AddAppServices();
