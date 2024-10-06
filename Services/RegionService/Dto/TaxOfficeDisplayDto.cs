@@ -7,4 +7,5 @@ public class TaxOfficeDisplayDto
     public string? ShortName { get; set; }
     public string Code { get; set; } = string.Empty;
     public string? Province { get; set; }
+    public int? ParentId { get; set; }
 }

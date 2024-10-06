@@ -12,6 +12,8 @@ public class OrgMapper : Profile
     {
         CreateMap<OrganizationInputDto, Organization>()
             .ForMember(des => des.UnsignName, op => op.MapFrom(src => src.FullName.UnSign()))
+            .ForMember(des => des.District, op => op.Ignore())
+            .ForMember(des => des.TaxOffice, op => op.Ignore())
             .ForAllMembers(op => op.Condition((dto, organization, props) => props != null));
 
         CreateMap<Organization, OrganizationDisplayDto>();

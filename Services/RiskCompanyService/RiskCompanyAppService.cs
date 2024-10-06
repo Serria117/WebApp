@@ -4,6 +4,7 @@ using WebApp.Enums;
 using WebApp.Payloads;
 using WebApp.Repositories;
 using WebApp.Services.InvoiceService.dto;
+using WebApp.Services.UserService;
 using X.Extensions.PagedList.EF;
 
 namespace WebApp.Services.RiskCompanyService;
@@ -16,10 +17,11 @@ public interface IRiskCompanyAppService
     Task<AppResponse> CheckInvoicesAsync(List<InvoiceDisplayDto> invoices);
     Task<AppResponse> SoftDeleteAsync(int id);
     Task<AppResponse> SoftDeleteManyAsync(List<int> ids);
-    Task<bool> IsInvoiceRisk(string taxId);
+    bool IsInvoiceRisk(string? sellerTaxCode);
 }
 
-public class RiskCompanyAppService(IAppRepository<RiskCompany, int> riskCompanyRepo) : AppServiceBase, IRiskCompanyAppService
+public class RiskCompanyAppService(IAppRepository<RiskCompany, int> riskCompanyRepo,
+                                   IUserManager userManager) : AppServiceBase(userManager), IRiskCompanyAppService
 {
     public async Task<AppResponse> GetAsync(PageRequest page)
     {
@@ -61,10 +63,11 @@ public class RiskCompanyAppService(IAppRepository<RiskCompany, int> riskCompanyR
         return AppResponse.SuccessResponse(positiveInv);
     }
 
-    public async Task<bool> IsInvoiceRisk(string taxId)
+    public bool IsInvoiceRisk(string? sellerTaxCode)
     {
-        var exist = await riskCompanyRepo.ExistAsync(x => x.TaxId == taxId);
-        return exist;
+        if (string.IsNullOrEmpty(sellerTaxCode)) return false;
+        var riskList = riskCompanyRepo.Find(x => !x.Deleted).Select(x => x.TaxId).ToHashSet();
+        return riskList.Contains(sellerTaxCode);
     }
 
     public async Task<AppResponse> SoftDeleteAsync(int id)

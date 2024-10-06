@@ -5,6 +5,7 @@ using WebApp.Core.DomainEntities.Accounting;
 using WebApp.Enums;
 using WebApp.Payloads;
 using WebApp.Repositories;
+using WebApp.Services.UserService;
 
 namespace WebApp.Services.BalanceSheetService;
 
@@ -18,7 +19,8 @@ public class BalanceSheetAppService(IAppRepository<Account, int> accountRepo,
                                     IAppRepository<BalanceSheetDetail, int> balanceSheetDetailRepo,
                                     IAppRepository<ImportedBalanceSheet, int> balanceSheetImportedRepo,
                                     IAppRepository<ImportedBalanceSheetDetail, int> importedBalanceSheetRepo,
-                                    ILogger<BalanceSheetAppService> logger) : AppServiceBase, IBalanceSheetAppService
+                                    ILogger<BalanceSheetAppService> logger, 
+                                    IUserManager userManager) : AppServiceBase(userManager), IBalanceSheetAppService
 {
     public async Task<AppResponse> ProcessBalanceSheet(Guid orgId, int year, IFormFile file)
     {

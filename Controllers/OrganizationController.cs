@@ -19,6 +19,13 @@ public class OrganizationController(IOrganizationAppService orgService) : Contro
         var res = await orgService.Create(input);
         return res.Success ? Ok(res) : BadRequest(res);
     }
+    
+    [HttpPost("create-many")]
+    public async Task<IActionResult> CreateMany(List<OrganizationInputDto> input)
+    {
+        var res = await orgService.CreateMany(input);
+        return res.Success ? Ok(res) : BadRequest(res);
+    }
 
     [HttpGet("all")]
     [HasAuthority(Permissions.OrgView)]
@@ -33,7 +40,7 @@ public class OrganizationController(IOrganizationAppService orgService) : Contro
     [HasAuthority(Permissions.OrgView)]
     public async Task<IActionResult> GetById(Guid id)
     {
-        var res = await orgService.GetById(id);
+        var res = await orgService.GetOneById(id);
         return res.Success ? Ok(res) : NotFound(res);
     }
 

@@ -5,7 +5,7 @@ using WebApp.Services.RestService.Dto;
 
 namespace WebApp.Utils;
 
-public static class ExtensionFunc
+public static class InvoiceExtension
 {
     public static InvoiceDisplayDto ToDisplayModel(this InvoiceDetailDoc doc)
     {

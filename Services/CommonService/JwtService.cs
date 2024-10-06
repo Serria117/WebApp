@@ -23,7 +23,8 @@ public class JwtService(IConfiguration config)
         {
             new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
             new Claim(JwtRegisteredClaimNames.Name, user.Username),
-            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+            new Claim("tenantId", "")
         };
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_secretKey));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha512Signature);
@@ -43,5 +44,4 @@ public class JwtService(IConfiguration config)
         var jwt = new JsonWebToken(token);
         return jwt.ValidTo.ToLocalTime();
     }
-    
 }

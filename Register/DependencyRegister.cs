@@ -30,6 +30,7 @@ public static class DependencyRegister
     {
         s.AddScoped(typeof(IAppRepository<,>), typeof(AppRepository<,>));
         s.AddScoped<IRestAppService, RestAppService>();
+        s.AddScoped<IUserManager, UserManager>();
         
         s.AddTransient<IUserAppService, UserAppAppService>();
         s.AddTransient<IRoleAppService, RoleAppService>();

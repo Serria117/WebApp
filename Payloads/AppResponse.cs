@@ -54,4 +54,14 @@ public class AppResponse
             Data = !details.IsNullOrEmpty() ? details.ToList() : null
         };
     }
+    
+    public static AppResponse ErrorResponse(string mesage, List<string> details)
+    {
+        return new AppResponse
+        {
+            Success = false,
+            Message = mesage,
+            Data = details
+        };
+    }
 }

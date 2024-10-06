@@ -76,7 +76,7 @@ public class RestAppService(IRestClient restClient,
 
             if (fromValue > toValue) throw new InvalidDataException("[From date] can not be greater than [To date]");
 
-            var dateRanges = CommonFunc.SplitDateRange(fromValue, toValue);
+            var dateRanges = CommonUtil.SplitDateRange(fromValue, toValue);
 
             foreach (var type in types)
             {

@@ -1,5 +1,6 @@
 ﻿using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.IdentityModel.Tokens;
 using WebApp.Services.UserService;
 
 namespace WebApp.Authentication;
@@ -21,7 +22,7 @@ public class PermissionAuthorizationHandler(
             var permissions = await permissionService.GetPermissionsFromMongo(id);
 
             //In case user does not exist in noSQL storage, retrieve from db
-            if(permissions is null || permissions.Count == 0)
+            if(permissions.IsNullOrEmpty())
             {
                 log.LogWarning("User not found in mongoDb storage. Retrieving user from database...");
                 permissions = await permissionService.GetPermissions(id);

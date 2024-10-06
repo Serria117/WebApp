@@ -126,6 +126,8 @@ services.AddSingleton<IRestClient>(new RestClient(new RestClientOptions(restSett
 services.AddAutoMapper(typeof(UserMapper), typeof(RoleMapper), 
     typeof(OrgMapper), typeof(PagedMapper), typeof(RegionMapper));
 
+services.AddSingleton<CustomMap>();
+
 services.AddHttpContextAccessor();
 services.AddSingleton<JwtService>();
 

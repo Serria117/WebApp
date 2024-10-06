@@ -9,7 +9,7 @@ using WebApp.Services.RestService.Dto;
 
 namespace WebApp.Controllers;
 
-[ApiController] [Route("/api/invoice")] [Authorize]
+[ApiController, Route("/api/invoice")] [Authorize]
 public class InvoiceController(IRestAppService restService,
                                IInvoiceAppService invService) : ControllerBase
 {
@@ -65,6 +65,6 @@ public class InvoiceController(IRestAppService restService,
         var stream = await invService.ExportExcel(taxId, from, to);
         var fileName = $"{taxId}_{from}_{to}.xlsx";
         Response.Headers["X-Filename"] = fileName;
-        return File(stream, ContentType.ApplicationOfficeXlsx, fileName);
+        return File(stream, ContentType.ApplicationOfficeSpreadSheet, fileName);
     }
 }

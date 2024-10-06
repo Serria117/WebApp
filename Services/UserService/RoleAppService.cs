@@ -23,25 +23,25 @@ namespace WebApp.Services.UserService
         Task<AppResponse> GetAllPermissionsInRole(int roleId);
     }
 
-    public class RoleAppService(
-        IConfiguration configuration,
-        IAppRepository<User, Guid> userRepository,
-        IAppRepository<Role, int> roleRepository,
-        IAppRepository<Permission, int> permissionRepository,
-        IUserMongoRepository userMongoRepository,
-        IHttpContextAccessor http,
-        ILogger<RoleAppService> logger,
-        IMapper mapper) : IRoleAppService
+    public class RoleAppService(IAppRepository<User, Guid> userRepository,
+                                IAppRepository<Role, int> roleRepository,
+                                IAppRepository<Permission, int> permissionRepository,
+                                IUserMongoRepository userMongoRepository,
+                                ILogger<RoleAppService> logger,
+                                IMapper mapper) : IRoleAppService
     {
         public async Task<AppResponse> GetAllRoles(PageRequest page)
         {
             var stopWatch = Stopwatch.StartNew();
             var pagedResult = await roleRepository.Find(
-                    condition: r => !r.Deleted && (string.IsNullOrEmpty(page.Keyword) || r.RoleName.Contains(page.Keyword)), 
-                    sortBy: page.SortBy, order: page.OrderBy, 
-                    include: ["Permissions"])
-                .AsSplitQuery()
-                .ToPagedListAsync(page.Number, page.Size);
+                                                      condition: r =>
+                                                          !r.Deleted && (string.IsNullOrEmpty(page.Keyword) ||
+                                                                         r.RoleName.Contains(page.Keyword)),
+                                                      sortBy: page.SortBy,
+                                                      order: page.OrderBy,
+                                                      include: [nameof(Role.Permissions)])
+                                                  .AsSplitQuery()
+                                                  .ToPagedListAsync(page.Number, page.Size);
             var dtoResult = mapper.Map<IPagedList<RoleDisplayDto>>(pagedResult);
             logger.LogInformation("Execution time: {time}", stopWatch.ElapsedMilliseconds);
             return new AppResponse
@@ -57,7 +57,7 @@ namespace WebApp.Services.UserService
         public async Task<AppResponse> GetAllPermissionsInRole(int roleId)
         {
             var role = await roleRepository.Find(r => r.Id == roleId)
-                .Include(r => r.Permissions).FirstOrDefaultAsync();
+                                           .Include(r => r.Permissions).FirstOrDefaultAsync();
             return role is null
                 ? new AppResponse { Success = false, Message = "Role not found" }
                 : AppResponse.SuccessResponse(mapper.Map<RoleDisplayDto>(role));
@@ -81,10 +81,10 @@ namespace WebApp.Services.UserService
         public async Task UpdateRole(int roleId, RoleInputDto dto)
         {
             var role = await roleRepository.Find(r => r.Id == roleId)
-                .Include(r => r.Permissions)
-                .Include(r => r.Users)
-                .AsSplitQuery()
-                .FirstOrDefaultAsync();
+                                           .Include(r => r.Permissions)
+                                           .Include(r => r.Users)
+                                           .AsSplitQuery()
+                                           .FirstOrDefaultAsync();
             if (role is null) throw new Exception("Role id not found");
             mapper.Map(dto, role);
             var newPermissions = await FindAllPermissionById([.. dto.Permissions]);
@@ -112,9 +112,9 @@ namespace WebApp.Services.UserService
             var role = await roleRepository.FindByIdAsync(roleId);
             if (role is not null)
                 users.AddRange(await userRepository.Find(u => u.Roles.Contains(role) && !u.Deleted)
-                    .Include(u => u.Roles).ThenInclude(r => r.Permissions)
-                    .AsSplitQuery()
-                    .ToListAsync());
+                                                   .Include(u => u.Roles).ThenInclude(r => r.Permissions)
+                                                   .AsSplitQuery()
+                                                   .ToListAsync());
             return users;
         }
 
@@ -123,11 +123,12 @@ namespace WebApp.Services.UserService
             var foundUsers = await GetUsersHaveRole(roleId);
             if (foundUsers.Count == 0) return;
             var userDocs = foundUsers.Select(u => new UserDoc
-                {
-                    UserId = u.Id.ToString(),
-                    Permissions = u.Roles.SelectMany(r => r.Permissions).Select(p => p.PermissionName).ToList()
-                })
-                .ToList();
+                                     {
+                                         UserId = u.Id.ToString(),
+                                         Permissions = u.Roles.SelectMany(r => r.Permissions)
+                                                        .Select(p => p.PermissionName).ToHashSet()
+                                     })
+                                     .ToList();
             await userMongoRepository.UpdateAllUser(userDocs);
         }
 
@@ -140,8 +141,8 @@ namespace WebApp.Services.UserService
         private async Task AddUsersToRole(Role role, ICollection<string> usernames)
         {
             var users = await userRepository
-                .Find(u => usernames.Contains(u.Username) && !u.Deleted)
-                .ToListAsync();
+                              .Find(u => usernames.Contains(u.Username) && !u.Deleted)
+                              .ToListAsync();
             role.Users.UnionWith(users);
         }
     }

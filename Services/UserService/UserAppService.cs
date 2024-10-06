@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Linq.Dynamic.Core;
 using AutoMapper;
 using Microsoft.EntityFrameworkCore;
@@ -72,12 +73,7 @@ namespace WebApp.Services.UserService
             var stopWatch = Stopwatch.StartNew();
             var user = await FindUserByUserName(login.Username);
             bool passwordMatch = false;
-            /*user = new User
-            {
-                Id = Guid.Parse("30a34f86-46ca-4370-3e6c-08dcc8a7abfb"),
-                Username = "admin",
-                Password = "$2a$12$CEvIlWrwzU2LjabBFJRoY.9lpXN8EULsznFlFDKdm3W07KMh5y6FG"
-            };*/
+            
             Console.WriteLine($"found user in db took: {stopWatch.ElapsedMilliseconds} ms");
 
             if (user is not null)
@@ -218,7 +214,7 @@ namespace WebApp.Services.UserService
             return new UserDoc
             {
                 UserId = user.Id.ToString(),
-                Permissions = await GetUserPermissions(user.Id)
+                Permissions = (await GetUserPermissions(user.Id)).ToHashSet(),
             };
         }
 

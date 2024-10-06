@@ -1,4 +1,5 @@
-﻿using System.Text.Json;
+﻿using System.Diagnostics;
+using System.Text.Json;
 using Microsoft.AspNetCore.SignalR;
 using Spire.Xls;
 using WebApp.Mongo.DeserializedModel;
@@ -9,6 +10,7 @@ using WebApp.Payloads;
 using WebApp.Services.InvoiceService.dto;
 using WebApp.Services.RestService;
 using WebApp.Services.RiskCompanyService;
+using WebApp.Services.UserService;
 using WebApp.SignalrConfig;
 using WebApp.Utils;
 
@@ -21,20 +23,22 @@ public interface IInvoiceAppService
     Task<byte[]> ExportExcel(string taxCode, string from, string to);
 }
 
-public class InvoiceAppService(//IMongoRepository mongo,
-                               IInvoiceMongoRepository mongoInvoice,
+public class InvoiceAppService(IInvoiceMongoRepository mongoInvoice,
                                IRestAppService restService,
-                               ILogger<InvoiceAppService> logger, 
+                               ILogger<InvoiceAppService> logger,
                                IRiskCompanyAppService riskService,
-                               IHubContext<AppHub> hubContext) : AppServiceBase, IInvoiceAppService
+                               IHubContext<AppHub> hubContext,
+                               IUserManager userManager) : AppServiceBase(userManager), IInvoiceAppService
 {
     public async Task<AppResponse> GetInvoices(string taxCode, InvoiceParams param)
     {
         var invoiceList = await mongoInvoice.FindInvoices(taxCode: taxCode,
-                                                   page: param.Page!.Value, size: param.Size!.Value,
-                                                   from: param.From, to: param.To,
-                                                   seller: param.SellerKeyword, invNo: param.InvoiceNumber
-        );
+                                                          page: param.Page!.Value, size: param.Size!.Value,
+                                                          from: param.From, to: param.To,
+                                                          seller: param.SellerKeyword, invNo: param.InvoiceNumber, 
+                                                          invoiceType: (int?) param.InvoiceType, 
+                                                          invoiceStatus: (int?) param.Status, 
+                                                          risk: param.Risk);
 
         return new AppResponse
         {
@@ -54,80 +58,85 @@ public class InvoiceAppService(//IMongoRepository mongo,
     {
         logger.LogInformation("Sync Invoices from {from} to {to} at {time}", from, to, DateTime.Now.ToLocalTime());
         var result = await restService.GetInvoiceListAsync(token, from, to);
-        if (result is { Success: true, Data: not null })
+
+        if (result is not { Success: true, Data: not null }) return AppResponse.ErrorResponse("Failed");
+
+        var invoiceList = (List<InvoiceDisplayDto>)result.Data;
+        var buyerTaxId = invoiceList.First().BuyerTaxCode;
+        List<InvoiceDetailModel> invoicesToSave = [];
+        var countAdd = 1;
+        var existedInvoices =
+            await mongoInvoice.GetExistingInvoiceIdsAsync(invoiceList.Select(inv => inv.Id).ToList(), buyerTaxId);
+        Console.WriteLine(
+            $"Found {existedInvoices.Count}/{invoiceList.Count} Invoices already existed in collection, those record will be ignored");
+
+        var newInvoices = invoiceList.Where(invoice => !existedInvoices.Contains(invoice.Id)).ToList();
+        Console.WriteLine($"{newInvoices.Count} Invoices will be retrieved and written.");
+        if (newInvoices.Count == 0)
+            return new AppResponse { Success = true, Message = "Already synced, no new invoices found" };
+        foreach (var invoice in newInvoices)
         {
-            var invoiceList = (List<InvoiceDisplayDto>)result.Data;
-            List<InvoiceDetailModel> invoiceToSave = [];
-            var countAdd = 1;
-            var existedInvoices = await mongoInvoice.GetExistingInvoiceIdsAsync(invoiceList.Select(inv => inv.Id).ToList());
-            Console.WriteLine(
-                $"Found {existedInvoices.Count}/{invoiceList.Count} Invoices already existed in collection, those record will be ignored");
+            var invDetail = await restService.GetInvoiceDetail(token, invoice);
 
-            var newInvoices = invoiceList.Where(invoice => !existedInvoices.Contains(invoice.Id)).ToList();
-            Console.WriteLine($"{newInvoices.Count} Invoices will be retrieved and written.");
-            if (newInvoices.Count == 0)
-                return new AppResponse { Success = true, Message = "Already synced, no new invoices found" };
-            foreach (var invoice in newInvoices)
+            if (invDetail is not { Success: true, Data: InvoiceDetailModel })
             {
-                var invDetail = await restService.GetInvoiceDetail(token, invoice);
+                logger.LogWarning($"Error: {invDetail.Message}");
+                logger.LogInformation("Skipping...\n {data}", invDetail.Data);
+                await hubContext.Clients.All.SendAsync("RetrieveList",
+                                                       $"Failed to save invoice {invoice.InvoiceNumber} of {invoice.SellerTaxCode}, created at: {invoice.CreationDate:dd/MM/yyyy}");
+                continue;
+            }
 
-                if (invDetail is not { Success: true, Data: InvoiceDetailModel })
-                {
-                    Console.WriteLine($"Error: {invDetail.Message}");
-                    continue;
-                }
-
+            if (invDetail.Data is InvoiceDetailModel invoiceToAdd)
+            {
+                invoiceToAdd.Risk = riskService.IsInvoiceRisk(invoiceToAdd.Nbmst);
+                invoicesToSave.Add(invoiceToAdd);
+                Console.WriteLine(
+                    $"{countAdd}/{newInvoices.Count} - Invoice {invoiceToAdd.Shdon} added to collection.");
                 var completed = decimal.Divide(countAdd, newInvoices.Count) * 100;
                 await hubContext.Clients.All.SendAsync("RetrieveList",
                                                        $"Saving {countAdd}/{newInvoices.Count} - {completed:F2}% completed");
-                var invoiceToAdd = (InvoiceDetailModel)invDetail.Data;
-                invoiceToSave.Add(invoiceToAdd);
-                Console.WriteLine(
-                    $"{countAdd}/{newInvoices.Count} - Invoice {invoiceToAdd.Shdon} added to collection.");
-                countAdd++;
             }
-
-            if (invoiceToSave.Count != 0)
-            {
-                try
-                {
-                    var jsonOption = new JsonSerializerOptions
-                    {
-                        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                        WriteIndented = true // optional, for pretty printing
-                    };
-                    await hubContext.Clients.All.SendAsync("writeInvoices", "Writing to database...");
-                    var isInserted = await mongoInvoice.InsertInvoicesAsync(invoiceToSave
-                                                                     .Select(i => i.DeserializeToBson(jsonOption))
-                                                                     .ToList());
-                    if (isInserted)
-                    {
-                        logger.LogInformation("Finished syncing invoices at {time}", DateTime.Now.ToLocalTime());
-                        return new AppResponse { Message = $"Successfully inserted {invoiceToSave.Count} invoices." };
-                    }
-
-                    logger.LogWarning("Unable to save invoices. Operation terminated at {time}",
-                                      DateTime.Now.ToLocalTime());
-                    return AppResponse.ErrorResponse("Nothing to insert.");
-                }
-                catch (Exception e)
-                {
-                    logger.LogError("Failed with Error: {mess}", e.Message);
-                    return AppResponse.ErrorResponse("Failed");
-                }
-            }
+            countAdd++;
         }
 
-        return AppResponse.ErrorResponse("Failed");
+        if (invoicesToSave.Count == 0) return AppResponse.ErrorResponse("Failed");
+        try
+        {
+            var jsonOption = new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                WriteIndented = true
+            };
+            await hubContext.Clients.All.SendAsync("writeInvoices", "Writing to database...");
+            var isInserted = await mongoInvoice.InsertInvoicesAsync(invoicesToSave
+                                                                    .Select(i => i.DeserializeToBson(jsonOption))
+                                                                    .ToList());
+            if (isInserted)
+            {
+                logger.LogInformation("Finished syncing invoices at {time}", DateTime.Now.ToLocalTime());
+                return new AppResponse { Message = $"Successfully inserted {invoicesToSave.Count} invoices." };
+            }
+
+            logger.LogWarning("Unable to save invoices. Operation terminated at {time}",
+                              DateTime.Now.ToLocalTime());
+            return AppResponse.ErrorResponse("Nothing to insert.");
+        }
+        catch (Exception e)
+        {
+            logger.LogError("Failed with Error: {mess}", e.Message);
+            return AppResponse.ErrorResponse("Failed");
+        }
+
     }
 
     public async Task<byte[]> ExportExcel(string taxCode, string from, string to)
     {
         var invoiceList = await mongoInvoice.FindInvoices(taxCode: taxCode,
-                                                   page: 1, size: 10_000,
-                                                   from: from, to: to,
-                                                   seller: null, invNo: null
-        );
+                                                          page: 1, size: 10_000,
+                                                          from: from, to: to,
+                                                          seller: null, invNo: null, 
+                                                          invoiceType: null, invoiceStatus: null, risk: null);
         var list = ((List<InvoiceDetailDoc>)invoiceList.Data).Select(inv => inv.ToDisplayModel())
                                                              .ToList();
 
@@ -171,7 +180,7 @@ public class InvoiceAppService(//IMongoRepository mongo,
             "Ngày ký", //
             "Ngày cấp mã", //
             "Trạng thái", //
-            "Loại hóa đơn" //
+            "Loại hóa đơn"
         ];
 
         List<string> summaryTitles =
@@ -187,7 +196,8 @@ public class InvoiceAppService(//IMongoRepository mongo,
             "Thuế GTGT", //9
             "Thành tiền", //10
             "Trạng thái", //11
-            "Loại hóa đơn" //12
+            "Loại hóa đơn", //12
+            "Cảnh báo nhà cung cấp"
         ];
 
         for (var i = 0; i < detailTitles.Count; i++)
@@ -262,6 +272,7 @@ public class InvoiceAppService(//IMongoRepository mongo,
 
                 sheetSummary.Range[startRow, 11].Value2 = inv.Status;
                 sheetSummary.Range[startRow, 12].Value2 = inv.InvoiceType;
+                sheetSummary.Range[startRow, 13].Value2 = inv.Risk is null or false ? "OK" : "Rủi ro";
 
                 #endregion
             }
