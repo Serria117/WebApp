@@ -19,6 +19,6 @@ public class OrgMapper : Profile
         CreateMap<Organization, OrganizationDisplayDto>();
 
         //Trim space of all string-type properties when mapping
-        CreateMap<string?, string?>().ConvertUsing(str => str.RemoveSpace()); 
+       // CreateMap<string?, string?>().ConvertUsing(str => str.RemoveSpace()); 
     }
 }

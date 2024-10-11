@@ -42,9 +42,7 @@ public class InvoiceAppService(IInvoiceMongoRepository mongoInvoice,
 
         return new AppResponse
         {
-            Data = ((List<InvoiceDetailDoc>)invoiceList.Data)
-                   .Select(inv => inv.ToDisplayModel())
-                   .ToList(),
+            Data = invoiceList.Data.Select(inv => inv.ToDisplayModel()).ToList(),
             Message = "Ok",
             TotalCount = invoiceList.Total,
             PageNumber = param.Page,
@@ -60,8 +58,15 @@ public class InvoiceAppService(IInvoiceMongoRepository mongoInvoice,
         var result = await restService.GetInvoiceListAsync(token, from, to);
 
         if (result is not { Success: true, Data: not null }) return AppResponse.ErrorResponse("Failed");
-
+        
         var invoiceList = (List<InvoiceDisplayDto>)result.Data;
+
+        if (invoiceList.Count == 0)
+        {
+            await hubContext.Clients.All.SendAsync("RetrieveList", "No new invoices found");
+            return AppResponse.SuccessResponse("No new invoices found");
+        }
+        
         var buyerTaxId = invoiceList.First().BuyerTaxCode;
         List<InvoiceDetailModel> invoicesToSave = [];
         var countAdd = 1;

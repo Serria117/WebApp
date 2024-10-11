@@ -14,14 +14,13 @@ namespace WebApp.Register;
 
 public static class DependencyRegister
 {
-    public static void AddMongoServices(this IServiceCollection s, IConfiguration c)
+    public static void AddMongoServices(this IServiceCollection s, MongoDbSettings settings)
     {
-        var mongoDbSettings = c.GetSection("MongoDbSettings").Get<MongoDbSettings>()!;
-        s.AddSingleton(mongoDbSettings);
-        s.AddSingleton<IMongoClient, MongoClient>(_ => new MongoClient(mongoDbSettings.ConnectionString));
+        s.AddSingleton(settings);
+        s.AddSingleton<IMongoClient, MongoClient>(_ => new MongoClient(settings.ConnectionString));
 
         s.AddScoped<IMongoDatabase>(provider => provider.GetRequiredService<IMongoClient>()
-                                                               .GetDatabase(mongoDbSettings.DatabaseName));
+                                                               .GetDatabase(settings.DatabaseName));
         s.AddScoped<IInvoiceMongoRepository, InvoiceMongoRepository>();
         s.AddScoped<IUserMongoRepository, UserMongoRepository>();
     }

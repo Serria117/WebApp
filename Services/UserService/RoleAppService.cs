@@ -9,6 +9,7 @@ using WebApp.Mongo.DocumentModel;
 using WebApp.Mongo.MongoRepositories;
 using WebApp.Payloads;
 using WebApp.Repositories;
+using WebApp.Services.Mappers;
 using WebApp.Services.UserService.Dto;
 using X.Extensions.PagedList.EF;
 using X.PagedList;
@@ -42,7 +43,7 @@ namespace WebApp.Services.UserService
                                                       include: [nameof(Role.Permissions)])
                                                   .AsSplitQuery()
                                                   .ToPagedListAsync(page.Number, page.Size);
-            var dtoResult = mapper.Map<IPagedList<RoleDisplayDto>>(pagedResult);
+            var dtoResult = pagedResult.MapPagedList(x => x.ToDisplayDto());
             logger.LogInformation("Execution time: {time}", stopWatch.ElapsedMilliseconds);
             return new AppResponse
             {
@@ -60,12 +61,12 @@ namespace WebApp.Services.UserService
                                            .Include(r => r.Permissions).FirstOrDefaultAsync();
             return role is null
                 ? new AppResponse { Success = false, Message = "Role not found" }
-                : AppResponse.SuccessResponse(mapper.Map<RoleDisplayDto>(role));
+                : AppResponse.SuccessResponse(role.ToDisplayDto());
         }
 
         public async Task<RoleDisplayDto> CreateRole(RoleInputDto dto)
         {
-            var role = mapper.Map<Role>(dto);
+            var role = dto.ToEntity();
             var permissions = await FindAllPermissionById([.. dto.Permissions]);
 
             if (permissions.Count > 0)
@@ -73,9 +74,8 @@ namespace WebApp.Services.UserService
 
             await AddUsersToRole(role, dto.User);
 
-
             var saved = await roleRepository.CreateAsync(role);
-            return mapper.Map<RoleDisplayDto>(saved);
+            return saved.ToDisplayDto();
         }
 
         public async Task UpdateRole(int roleId, RoleInputDto dto)

@@ -1,10 +1,14 @@
 ﻿using AutoMapper.QueryableExtensions;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using Spire.Xls;
+using WebApp.Core.DomainEntities;
 using WebApp.Core.DomainEntities.Accounting;
 using WebApp.Enums;
 using WebApp.Payloads;
 using WebApp.Repositories;
+using WebApp.Services.BalanceSheetService.Dto;
+using WebApp.Services.Mappers;
 using WebApp.Services.UserService;
 
 namespace WebApp.Services.BalanceSheetService;
@@ -12,22 +16,83 @@ namespace WebApp.Services.BalanceSheetService;
 public interface IBalanceSheetAppService
 {
     Task<AppResponse> ProcessBalanceSheet(Guid orgId, int year, IFormFile file);
+    Task<AppResponse> CreateImportedBalanceSheet(Guid orgId, List<ImportedBsDetailCreateDto> input);
+    Task<AppResponse> GetImportedBalanceSheetsByOrg(Guid orgId);
+    Task<AppResponse> GetImportedBalanceSheets(int id);
+    Task DeleteImportedBalanceSheet(int id);
 }
 
 public class BalanceSheetAppService(IAppRepository<Account, int> accountRepo,
                                     IAppRepository<BalanceSheet, int> balanceSheetRepo,
                                     IAppRepository<BalanceSheetDetail, int> balanceSheetDetailRepo,
-                                    IAppRepository<ImportedBalanceSheet, int> balanceSheetImportedRepo,
-                                    IAppRepository<ImportedBalanceSheetDetail, int> importedBalanceSheetRepo,
-                                    ILogger<BalanceSheetAppService> logger, 
-                                    IUserManager userManager) : AppServiceBase(userManager), IBalanceSheetAppService
+                                    IAppRepository<ImportedBalanceSheet, int> importedBsRepo,
+                                    IAppRepository<ImportedBalanceSheetDetail, int> importedBsDetailRepo,
+                                    IAppRepository<Organization, Guid> orgRepo,
+                                    ILogger<BalanceSheetAppService> logger,
+                                    IUserManager userManager) : IBalanceSheetAppService
 {
+    public async Task<AppResponse> CreateImportedBalanceSheet(Guid orgId, List<ImportedBsDetailCreateDto> input)
+    {
+        if (!await orgRepo.ExistAsync(o => o.Id == orgId)) return AppResponse.ErrorResponse("org id cannot be found");
+        var balanceSheet = new ImportedBalanceSheet
+        {
+            Organization = orgRepo.Attach(orgId),
+            Details = input.MapCollection(x => x.ToEntity()).ToHashSet(),
+        };
+
+        CalculateBalanceSheetTotal(balanceSheet);
+
+        var savedBs = await importedBsRepo.CreateAsync(balanceSheet);
+
+        return AppResponse.SuccessResponse(new
+        {
+            Id = savedBs.Id,
+            Valid = savedBs.IsValid,
+            OpenCr = savedBs.SumOpenCredit,
+            OpenDr = savedBs.SumOpenDebit,
+            AriseCr = savedBs.SumAriseCredit,
+            AriseDr = savedBs.SumAriseDebit,
+            CloseCr = savedBs.SumCloseCredit,
+            CloseDr = savedBs.SumCloseDebit,
+        });
+    }
+
+    public async Task<AppResponse> GetImportedBalanceSheetsByOrg(Guid orgId)
+    {
+        var result = await importedBsRepo
+                           .Find(x => x.Organization != null && x.Organization.Id == orgId && !x.Deleted,
+                                 sortBy: nameof(ImportedBalanceSheet.CreateAt),
+                                 order: SortOrder.DESC)
+                           .ToListAsync();
+        return result.IsNullOrEmpty()
+            ? AppResponse.ErrorResponse("No imported balances found")
+            : AppResponse.SuccessResponse(result.MapCollection(x => x.ToDisplayDto()));
+    }
+
+    public async Task<AppResponse> GetImportedBalanceSheets(int id)
+    {
+        var result = await importedBsRepo
+                           .Find(x => x.Id == id && !x.Deleted, include: [nameof(ImportedBalanceSheet.Details)])
+                           .FirstOrDefaultAsync();
+        
+        if(result is null) return AppResponse.ErrorResponse("No imported balances found");
+        
+        return AppResponse.SuccessResponse(result.ToDisplayDto());
+    }
+
+    public async Task DeleteImportedBalanceSheet(int id)
+    {
+        await importedBsRepo.SoftDeleteAsync(id);
+        await importedBsDetailRepo.Find(x => x.ImportedBalanceSheet.Id == id)
+                                  .ExecuteUpdateAsync(x => x.SetProperty(b => b.Deleted, true));
+    }
+
     public async Task<AppResponse> ProcessBalanceSheet(Guid orgId, int year, IFormFile file)
     {
         using var stream = new MemoryStream();
         await file.CopyToAsync(stream);
         stream.Position = 0;
-        
+
         var importedBalanceSheet = new ImportedBalanceSheet
         {
             Details = ReadBalanceSheetFromFile(stream).ToHashSet(),
@@ -41,6 +106,23 @@ public class BalanceSheetAppService(IAppRepository<Account, int> accountRepo,
                 ImportedBalanceSheet = importedBalanceSheet,
             }
         });
+    }
+
+    private static void CalculateBalanceSheetTotal(ImportedBalanceSheet bs)
+    {
+        foreach (var b in bs.Details.Where(b => b.Account?.ToString().Length == 3))
+        {
+            bs.SumOpenCredit += b.OpenCredit;
+            bs.SumOpenDebit += b.OpenDebit;
+            bs.SumCloseCredit += b.CloseCredit;
+            bs.SumCloseDebit += b.CloseDebit;
+            bs.SumAriseCredit += b.AriseCredit;
+            bs.SumAriseDebit += b.AriseDebit;
+        }
+
+        bs.IsValid = bs.SumOpenCredit == bs.SumOpenDebit
+                     && bs.SumAriseCredit == bs.SumAriseDebit
+                     && bs.SumCloseCredit == bs.SumCloseDebit;
     }
 
     private List<ImportedBalanceSheetDetail> ReadBalanceSheetFromFile(Stream fileStream)
@@ -59,7 +141,7 @@ public class BalanceSheetAppService(IAppRepository<Account, int> accountRepo,
         {
             var detail = new ImportedBalanceSheetDetail
             {
-                Account = int.Parse(worksheet.Range[i, 1].Value),
+                Account = worksheet.Range[i, 1].Value,
                 OpenCredit = ParseDecimal(worksheet.Range[i, 2].Value),
                 OpenDebit = ParseDecimal(worksheet.Range[i, 3].Value),
                 AriseCredit = ParseDecimal(worksheet.Range[i, 4].Value),
@@ -76,15 +158,15 @@ public class BalanceSheetAppService(IAppRepository<Account, int> accountRepo,
 
     private async Task<BalanceSheetDetail> MapBalanceSheetDetail(ImportedBalanceSheetDetail imported)
     {
-        var accounts = await accountRepo.FindAndSort(x => !x.Deleted, [], [nameof(Account.Id)])
-                                        .Select(x => x.Id)
+        var accounts = await accountRepo.FindAndSort(x => !x.Deleted, [], [nameof(Account.AccountNumber)])
+                                        .Select(x => x.AccountNumber)
                                         .ToListAsync();
-        
-        if (!accounts.Contains(imported.Account))
+
+        if (imported.Account is null || !accounts.Contains(imported.Account))
         {
             imported.IsValid = false;
         }
-        
+
         var existedDetail = await balanceSheetDetailRepo.Find(x => x.Account == imported.Account)
                                                         .FirstOrDefaultAsync();
         if (existedDetail is not null)
@@ -100,7 +182,6 @@ public class BalanceSheetAppService(IAppRepository<Account, int> accountRepo,
 
         var newDetail = new BalanceSheetDetail()
         {
-            
         };
         return await balanceSheetDetailRepo.CreateAsync(newDetail);
     }

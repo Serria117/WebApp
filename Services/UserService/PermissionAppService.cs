@@ -4,6 +4,7 @@ using WebApp.Core.DomainEntities;
 using WebApp.Mongo.MongoRepositories;
 using WebApp.Payloads;
 using WebApp.Repositories;
+using WebApp.Services.Mappers;
 using WebApp.Services.UserService.Dto;
 
 namespace WebApp.Services.UserService
@@ -39,7 +40,7 @@ namespace WebApp.Services.UserService
         {
             var permissions = await permissionRepo.Find(p => !p.Deleted).ToListAsync();
             //permissions.Select(mapper.Map<PermissionDisplayDto>)
-            return AppResponse.SuccessResponse(mapper.Map<List<PermissionDisplayDto>>(permissions));
+            return AppResponse.SuccessResponse(permissions.MapCollection(x => x.ToDisplayDto()));
         }
     }
 }

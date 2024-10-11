@@ -9,6 +9,7 @@ using WebApp.Mongo.MongoRepositories;
 using WebApp.Payloads;
 using WebApp.Repositories;
 using WebApp.Services.CommonService;
+using WebApp.Services.Mappers;
 using WebApp.Services.UserService.Dto;
 using X.Extensions.PagedList.EF;
 using X.PagedList;
@@ -26,23 +27,23 @@ namespace WebApp.Services.UserService
         Task<AppResponse> GetAllUsers(PageRequest page);
         Task UnlockUser(Guid userId);
         Task<AppResponse> ChangeUserRoles(Guid id, List<int> roleIds);
+        Task<AppResponse> SelfChangePassword(string oldPassword, string newPassword);
     }
 
-    public class UserAppAppService(
-        IMapper mapper,
-        IAppRepository<User, Guid> userRepository,
-        IUserMongoRepository userMongoRepository,
-        JwtService jwtService,
-        IConfiguration configuration,
-        IAppRepository<Role, int> roleRepository) : IUserAppService
+    public class UserAppAppService(IAppRepository<User, Guid> userRepository,
+                                   IUserMongoRepository userMongoRepository,
+                                   JwtService jwtService,
+                                   IConfiguration configuration,
+                                   IAppRepository<Role, int> roleRepository,
+                                   IUserManager userManager) : IUserAppService
     {
         public async Task<AppResponse> GetAllUsers(PageRequest page)
         {
             var query = userRepository.Find(u => !u.Deleted, "Roles");
             var users = await query
-                .OrderBy(page.Sort)
-                .ToPagedListAsync(page.Number, page.Size);
-            return AppResponse.SuccessResponse(mapper.Map<IPagedList<UserDisplayDto>>(users));
+                              .OrderBy(page.Sort)
+                              .ToPagedListAsync(page.Number, page.Size);
+            return AppResponse.SuccessResponse(users.MapPagedList(x => x.ToDisplayDto()));
         }
 
         public async Task<UserDisplayDto> CreateUser(UserInputDto userDto)
@@ -53,7 +54,7 @@ namespace WebApp.Services.UserService
             if (await ExistUsername(userDto.Username))
                 throw new Exception("Username has already been taken");
 
-            var user = mapper.Map<User>(userDto);
+            var user = userDto.ToEntity();
             var roles = await FindAllRoles(userDto.Roles);
 
             if (roles.Count > 0)
@@ -65,15 +66,15 @@ namespace WebApp.Services.UserService
 
             await userMongoRepository.InsertUser(await MapToMongo(created));
 
-            return mapper.Map<UserDisplayDto>(created);
+            return created.ToDisplayDto();
         }
 
         public async Task<AuthenticationResponse> Authenticate(UserLoginDto login)
         {
             var stopWatch = Stopwatch.StartNew();
             var user = await FindUserByUserName(login.Username);
-            bool passwordMatch = false;
-            
+            var passwordMatch = false;
+
             Console.WriteLine($"found user in db took: {stopWatch.ElapsedMilliseconds} ms");
 
             if (user is not null)
@@ -121,6 +122,25 @@ namespace WebApp.Services.UserService
             };
         }
 
+        public async Task<AppResponse> SelfChangePassword(string oldPassword, string newPassword)
+        {
+            var id = userManager.CurrentUserId();
+            if (id is null)
+                return AppResponse.ErrorResponse("Unauthorized access");
+
+            var user = await userRepository.FindByIdAsync(Guid.Parse(id));
+            if (user is null)
+                return AppResponse.ErrorResponse("User not found");
+
+            var checkOldPassword = oldPassword.PasswordVerify(user.Password);
+            if (!checkOldPassword)
+                return AppResponse.ErrorResponse("Invalid old password");
+
+            user.Password = newPassword.BCryptHash();
+            await userRepository.UpdateAsync(user);
+            return AppResponse.Ok("Password changed successfully");
+        }
+
         public async Task<AppResponse> ChangeUserRoles(Guid id, List<int> roleIds)
         {
             var user = await userRepository.Find(u => u.Id == id, "Roles").FirstOrDefaultAsync();
@@ -165,8 +185,8 @@ namespace WebApp.Services.UserService
                 var user = await userRepository.FindByIdAsync(userId);
                 if (user is null) throw new Exception("User not found");
                 var roles = await roleRepository.Find(r => r.Users.Contains(user))
-                    .ToListAsync();
-                return roles.Select(mapper.Map<RoleDisplayDto>).ToList();
+                                                .ToListAsync();
+                return roles.MapCollection(r => r.ToDisplayDto()).ToList();
             }
             catch (Exception e)
             {
@@ -194,19 +214,19 @@ namespace WebApp.Services.UserService
         private async Task<User?> FindUserByUsername(string name)
         {
             return await userRepository
-                .Find(x => x.Username == name && !x.Deleted)
-                .Include(u => u.Roles).ThenInclude(r => r.Permissions)
-                .FirstOrDefaultAsync();
+                         .Find(x => x.Username == name && !x.Deleted)
+                         .Include(u => u.Roles).ThenInclude(r => r.Permissions)
+                         .FirstOrDefaultAsync();
         }
 
         private async Task<List<string>> GetUserPermissions(Guid id)
         {
             return await userRepository.Find(u => u.Id == id && !u.Deleted)
-                .Include(u => u.Roles).ThenInclude(r => r.Permissions)
-                .SelectMany(u => u.Roles)
-                .SelectMany(r => r.Permissions).Select(p => p.PermissionName)
-                .Distinct()
-                .ToListAsync();
+                                       .Include(u => u.Roles).ThenInclude(r => r.Permissions)
+                                       .SelectMany(u => u.Roles)
+                                       .SelectMany(r => r.Permissions).Select(p => p.PermissionName)
+                                       .Distinct()
+                                       .ToListAsync();
         }
 
         private async Task<UserDoc> MapToMongo(User user)

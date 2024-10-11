@@ -9,6 +9,7 @@ using WebApp;
 using WebApp.Authentication;
 using WebApp.Core.Data;
 using WebApp.Core.DomainEntities;
+using WebApp.Mongo;
 using WebApp.Register;
 using WebApp.Repositories;
 using WebApp.Services.CommonService;
@@ -23,6 +24,7 @@ var config = builder.Configuration;
 var jwtKey = config["JwtSettings:SecretKey"];
 
 var restSettings = config.GetSection("RestSharp").Get<RestSharpSetting>()!;
+var mongoSettings = config.GetSection("MongoDbSettings").Get<MongoDbSettings>()!;
 var origins = config.GetSection("AllowedOrigins").Get<string[]>() ?? [];   
 
 // Add services to the container.
@@ -134,7 +136,7 @@ services.AddSingleton<JwtService>();
 
 /* Add application services */
 services.AddAppServices();
-services.AddMongoServices(config);
+services.AddMongoServices(mongoSettings);
 
 var app = builder.Build();
 
@@ -149,9 +151,10 @@ using (var scope = app.Services.CreateScope())
 app.UseCors(op =>
 {
     op.WithOrigins(origins);
-    op.AllowAnyHeader();
     op.AllowAnyMethod();
     op.AllowCredentials();
+    op.WithExposedHeaders("X-Filename"); //custom header for client to access
+    op.AllowAnyHeader();
     op.Build();
 });
 

@@ -16,7 +16,7 @@ namespace WebApp.Services.OrganizationService;
 public interface IOrganizationAppService
 {
     Task<AppResponse> Create(OrganizationInputDto dto);
-    
+
     Task<AppResponse> CreateMany(List<OrganizationInputDto> dto);
     Task<AppResponse> Find(PageRequest page);
     Task<AppResponse> GetOneById(Guid id);
@@ -28,7 +28,6 @@ public class OrganizationAppService(IAppRepository<Organization, Guid> orgRepo,
                                     IAppRepository<Province, int> provinceRepo,
                                     IAppRepository<District, int> districtRepo,
                                     IAppRepository<TaxOffice, int> taxOfficeRepo,
-                                    IMapper mapper,
                                     IUserManager userManager) : AppServiceBase(userManager), IOrganizationAppService
 {
     public async Task<AppResponse> Create(OrganizationInputDto dto)
@@ -102,7 +101,8 @@ public class OrganizationAppService(IAppRepository<Organization, Guid> orgRepo,
         return new AppResponse
         {
             Success = true,
-            Message = $"Successfully added {entitiesToSave.Count}/{input.Count} organization(s). Check data for error (if any)",
+            Message =
+                $"Successfully added {entitiesToSave.Count}/{input.Count} organization(s). Check data for error (if any)",
             Data = new
             {
                 totalItems = input.Count,
@@ -140,7 +140,7 @@ public class OrganizationAppService(IAppRepository<Organization, Guid> orgRepo,
                                         .AsSplitQuery()
                                         .AsNoTracking()
                                         .ToPagedListAsync(page.Number, page.Size))
-            .ToDisplayDto();
+            .MapPagedList(x => x.ToDisplayDto());
         return AppResponse.SuccessResponse(pagedResult);
     }
 
@@ -157,7 +157,8 @@ public class OrganizationAppService(IAppRepository<Organization, Guid> orgRepo,
             return new AppResponse { Success = false, Message = "The TaxId you enter has already existed" };
         }
 
-        mapper.Map(updateDto, foundOrg);
+        updateDto.UpdateEntity(foundOrg);
+
         foundOrg.District = districtRepo.Attach(updateDto.DistrictId!.Value);
         foundOrg.TaxOffice = taxOfficeRepo.Attach(updateDto.TaxOfficeId!.Value);
         var saved = await orgRepo.UpdateAsync(foundOrg);
@@ -166,7 +167,7 @@ public class OrganizationAppService(IAppRepository<Organization, Guid> orgRepo,
 
     public async Task<AppResponse> GetOneById(Guid id)
     {
-        var org = await orgRepo.Find(x => x.Id == id,
+        var org = await orgRepo.Find(condition: x => x.Id == id,
                                      include:
                                      [
                                          nameof(Organization.TaxOffice),
@@ -175,7 +176,7 @@ public class OrganizationAppService(IAppRepository<Organization, Guid> orgRepo,
                                .FirstOrDefaultAsync();
         return org == null
             ? AppResponse.ErrorResponse("Id not found")
-            : AppResponse.SuccessResponse(mapper.Map<OrganizationDisplayDto>(org));
+            : AppResponse.SuccessResponse(org.ToDisplayDto());
     }
 
     private async Task<bool> TaxIdExist(string taxId)
@@ -187,16 +188,15 @@ public class OrganizationAppService(IAppRepository<Organization, Guid> orgRepo,
     {
         var errors = new List<string>();
 
-        if (dto.TaxOfficeId is null || await taxOfficeRepo.ExistAsync(x => x.Id == dto.TaxOfficeId))
+        if (dto.TaxOfficeId is null || !await taxOfficeRepo.ExistAsync(x => x.Id == dto.TaxOfficeId))
         {
             errors.Add("Invalid tax office");
         }
 
-        if (dto.DistrictId is null || await districtRepo.ExistAsync(x => x.Id == dto.DistrictId))
+        if (dto.DistrictId is null || !await districtRepo.ExistAsync(x => x.Id == dto.DistrictId))
         {
             errors.Add("Invalid district");
         }
-
         return errors;
     }
 }

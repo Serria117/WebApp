@@ -17,7 +17,6 @@ public class RegionMapper : Profile
             .ForMember(dest => dest.Province, opt => opt.Ignore());
 
         CreateMap<District, DistrictDisplayDto>()
-            .ForMember(dest => dest.Province, opt => opt.MapFrom(scr => scr.Province.Name))
             .ForAllMembers(op => op.Condition((scr, dest, props) => props is not null));
         
         CreateMap<DistrictCreateDto, District>()
