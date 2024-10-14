@@ -1,3 +1,4 @@
+using System.Reflection;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
@@ -25,57 +26,58 @@ var jwtKey = config["JwtSettings:SecretKey"];
 
 var restSettings = config.GetSection("RestSharp").Get<RestSharpSetting>()!;
 var mongoSettings = config.GetSection("MongoDbSettings").Get<MongoDbSettings>()!;
-var origins = config.GetSection("AllowedOrigins").Get<string[]>() ?? [];   
+var origins = config.GetSection("AllowedOrigins").Get<string[]>() ?? [];
 
 // Add services to the container.
-services.AddDbContext<AppDbContext>((serviceProvider,options) =>
+services.AddDbContext<AppDbContext>((serviceProvider, options) =>
 {
     options.UseSqlServer(connectionString: config.GetConnectionString("SqlServer"));
-   // options.AddInterceptors(serviceProvider.GetRequiredService<AuditableEntityInterceptor>());
+    // options.AddInterceptors(serviceProvider.GetRequiredService<AuditableEntityInterceptor>());
 });
 
 builder.Services.AddControllers()
-    .AddJsonOptions(options =>
-    {
-        options.JsonSerializerOptions.ReferenceHandler =
-            System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
-    });
+       .AddJsonOptions(options =>
+       {
+           options.JsonSerializerOptions.ReferenceHandler =
+               System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
+       });
 
 services.AddAuthentication(options =>
-    {
-        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-        options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
-    })
-    .AddJwtBearer(options =>
-    {
-        options.SaveToken = true;
-        options.RequireHttpsMetadata = false;
-        options.TokenValidationParameters = new TokenValidationParameters
         {
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateLifetime = true,
-            ValidateIssuerSigningKey = true,
-            ValidIssuer = config["JwtSettings:Issuer"],
-            ValidAudience = config["JwtSettings:Audience"],
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey!)),
-            NameClaimType = "name"
-        };
-        options.Events = new JwtBearerEvents()
+            options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+            options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
+        })
+        .AddJwtBearer(options =>
         {
-            OnMessageReceived = context =>
+            options.SaveToken = true;
+            options.RequireHttpsMetadata = false;
+            options.TokenValidationParameters = new TokenValidationParameters
             {
-                var accessToken = context.Request.Query["access_token"];
-                var path = context.HttpContext.Request.Path;
-                if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/progressHub"))
+                ValidateIssuer = true,
+                ValidateAudience = true,
+                ValidateLifetime = true,
+                ValidateIssuerSigningKey = true,
+                ValidIssuer = config["JwtSettings:Issuer"],
+                ValidAudience = config["JwtSettings:Audience"],
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey!)),
+                NameClaimType = "name"
+            };
+            options.Events = new JwtBearerEvents()
+            {
+                OnMessageReceived = context =>
                 {
-                    context.Token = accessToken;
+                    var accessToken = context.Request.Query["access_token"];
+                    var path = context.HttpContext.Request.Path;
+                    if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/progressHub"))
+                    {
+                        context.Token = accessToken;
+                    }
+
+                    return Task.CompletedTask;
                 }
-                return Task.CompletedTask;
-            }
-        };
-    });
+            };
+        });
 
 // Custom authorization handlers:
 services.AddAuthorization();
@@ -119,20 +121,23 @@ services.AddSwaggerGen(ops =>
             Array.Empty<string>()
         }
     });
+    // Set the comments path for the Swagger JSON and UI.
+    var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+    ops.IncludeXmlComments(xmlPath);
 });
 
 services.AddSingleton(restSettings);
 services.AddSingleton<IRestClient>(new RestClient(new RestClientOptions(restSettings.BaseUrl)));
 
 /* Add mapper services */
-services.AddAutoMapper(typeof(UserMapper), typeof(RoleMapper), 
-    typeof(OrgMapper), typeof(PagedMapper), typeof(RegionMapper));
+/*services.AddAutoMapper(typeof(UserMapper), typeof(RoleMapper),
+                       typeof(OrgMapper), typeof(PagedMapper), typeof(RegionMapper));*/
 
 services.AddSingleton<CustomMap>();
 
 services.AddHttpContextAccessor();
 services.AddSingleton<JwtService>();
-
 
 /* Add application services */
 services.AddAppServices();
@@ -184,5 +189,6 @@ void SeedPermissions(AppDbContext context)
     {
         context.Permissions.Add(new Permission { PermissionName = permission });
     }
+
     context.SaveChanges();
 }

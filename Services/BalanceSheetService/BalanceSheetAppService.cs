@@ -16,10 +16,11 @@ namespace WebApp.Services.BalanceSheetService;
 public interface IBalanceSheetAppService
 {
     Task<AppResponse> ProcessBalanceSheet(Guid orgId, int year, IFormFile file);
-    Task<AppResponse> CreateImportedBalanceSheet(Guid orgId, List<ImportedBsDetailCreateDto> input);
+    Task<AppResponse> CreateImportedBalanceSheet(Guid orgId, BalanceSheetParams input);
     Task<AppResponse> GetImportedBalanceSheetsByOrg(Guid orgId);
     Task<AppResponse> GetImportedBalanceSheets(int id);
     Task DeleteImportedBalanceSheet(int id);
+    Task<AppResponse> HardDeleteImportedBalanceSheet(int id);
 }
 
 public class BalanceSheetAppService(IAppRepository<Account, int> accountRepo,
@@ -31,13 +32,13 @@ public class BalanceSheetAppService(IAppRepository<Account, int> accountRepo,
                                     ILogger<BalanceSheetAppService> logger,
                                     IUserManager userManager) : IBalanceSheetAppService
 {
-    public async Task<AppResponse> CreateImportedBalanceSheet(Guid orgId, List<ImportedBsDetailCreateDto> input)
+    public async Task<AppResponse> CreateImportedBalanceSheet(Guid orgId, BalanceSheetParams input)
     {
         if (!await orgRepo.ExistAsync(o => o.Id == orgId)) return AppResponse.ErrorResponse("org id cannot be found");
         var balanceSheet = new ImportedBalanceSheet
         {
             Organization = orgRepo.Attach(orgId),
-            Details = input.MapCollection(x => x.ToEntity()).ToHashSet(),
+            Details = input.Details.MapCollection(x => x.ToEntity()).ToHashSet(),
         };
 
         CalculateBalanceSheetTotal(balanceSheet);
@@ -65,7 +66,7 @@ public class BalanceSheetAppService(IAppRepository<Account, int> accountRepo,
                                  order: SortOrder.DESC)
                            .ToListAsync();
         return result.IsNullOrEmpty()
-            ? AppResponse.ErrorResponse("No imported balances found")
+            ? AppResponse.ErrorResponse(ResponseMessage.NotFound)
             : AppResponse.SuccessResponse(result.MapCollection(x => x.ToDisplayDto()));
     }
 
@@ -75,7 +76,7 @@ public class BalanceSheetAppService(IAppRepository<Account, int> accountRepo,
                            .Find(x => x.Id == id && !x.Deleted, include: [nameof(ImportedBalanceSheet.Details)])
                            .FirstOrDefaultAsync();
         
-        if(result is null) return AppResponse.ErrorResponse("No imported balances found");
+        if(result is null) return AppResponse.ErrorResponse(ResponseMessage.NotFound);
         
         return AppResponse.SuccessResponse(result.ToDisplayDto());
     }
@@ -106,6 +107,12 @@ public class BalanceSheetAppService(IAppRepository<Account, int> accountRepo,
                 ImportedBalanceSheet = importedBalanceSheet,
             }
         });
+    }
+
+    public async Task<AppResponse> HardDeleteImportedBalanceSheet(int id)
+    {
+        var result = await importedBsRepo.HardDeleteAsync(id);
+        return result ? AppResponse.Ok() : AppResponse.ErrorResponse(ResponseMessage.NotFound);
     }
 
     private static void CalculateBalanceSheetTotal(ImportedBalanceSheet bs)

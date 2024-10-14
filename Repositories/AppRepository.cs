@@ -30,6 +30,7 @@ public interface IAppRepository<T, in TK> where T : BaseEntity<TK>
     Task<bool> SoftDeleteManyAsync(params TK[] ids);
     IQueryable<T> FindAndSort(Expression<Func<T, bool>> condition, string[] props, string[] sortStrings);
     T Attach(TK id);
+    Task<bool> HardDeleteAsync(TK id);
 }
 
 public class AppRepository<T, TK> : IAppRepository<T, TK> where T : BaseEntity<TK>, new()
@@ -159,5 +160,13 @@ public class AppRepository<T, TK> : IAppRepository<T, TK> where T : BaseEntity<T
         var result = await Find(t => ids.Contains(t.Id) && !t.Deleted)
             .ExecuteUpdateAsync(x => x.SetProperty(p => p.Deleted, true));
         return result > 0;
+    }
+
+    public async Task<bool> HardDeleteAsync(TK id)
+    {
+        var entity = await _dbSet.FindAsync(id);
+        if (entity == null) return false;
+        var res = await _dbSet.DeleteByKeyAsync(entity);
+        return res > 0;
     }
 }

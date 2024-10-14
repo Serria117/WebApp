@@ -7,5 +7,7 @@ namespace WebApp.Services.Mappers;
 [Mapper]
 public partial class CustomMap
 {
-    public partial OrganizationDisplayDto Org_ToDto(Organization org);
+    public partial OrganizationDisplayDto OrgToDto(Organization org);
+    
+    public partial Organization DtoToOrg(OrganizationDisplayDto org);
 }

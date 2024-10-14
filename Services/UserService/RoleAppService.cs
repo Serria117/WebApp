@@ -28,8 +28,7 @@ namespace WebApp.Services.UserService
                                 IAppRepository<Role, int> roleRepository,
                                 IAppRepository<Permission, int> permissionRepository,
                                 IUserMongoRepository userMongoRepository,
-                                ILogger<RoleAppService> logger,
-                                IMapper mapper) : IRoleAppService
+                                ILogger<RoleAppService> logger) : IRoleAppService
     {
         public async Task<AppResponse> GetAllRoles(PageRequest page)
         {
@@ -86,7 +85,7 @@ namespace WebApp.Services.UserService
                                            .AsSplitQuery()
                                            .FirstOrDefaultAsync();
             if (role is null) throw new Exception("Role id not found");
-            mapper.Map(dto, role);
+            dto.UpdateEntity(role);
             var newPermissions = await FindAllPermissionById([.. dto.Permissions]);
 
             var permissionsToRemove = role.Permissions.Except(newPermissions).ToList();
@@ -102,8 +101,8 @@ namespace WebApp.Services.UserService
                 role.Permissions.Add(permission);
             }
 
-            await roleRepository.UpdateAsync(role);
-            await UpdatePermissionForAllUsers(roleId);
+            await Task.WhenAll(roleRepository.UpdateAsync(role),
+                               UpdatePermissionForAllUsers(roleId));
         }
 
         private async Task<List<User>> GetUsersHaveRole(int roleId)

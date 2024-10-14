@@ -14,9 +14,9 @@ namespace WebApp.Services.Mappers;
 public static class MapExtension
 {
     public static IPagedList<TDto> MapPagedList<TEntity, TDto>(this IPagedList<TEntity> entities,
-                                                               Func<TEntity, TDto> mapper)
+                                                               Func<TEntity, TDto> mapFunction)
     {
-        var dtoList = entities.Select(mapper);
+        var dtoList = entities.Select(mapFunction);
         return new StaticPagedList<TDto>(subset: dtoList, metaData: entities);
     }
 
@@ -257,6 +257,12 @@ public static class MapExtension
             RoleName = d.RoleName,
             Description = d.Description,
         };
+    }
+
+    public static void UpdateEntity(this RoleInputDto i, Role r)
+    {
+        r.Description = i.Description;
+        r.RoleName = i.RoleName;
     }
 
     public static PermissionDisplayDto ToDisplayDto(this Permission permission)

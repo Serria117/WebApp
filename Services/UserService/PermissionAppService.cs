@@ -18,7 +18,6 @@ namespace WebApp.Services.UserService
 
     public class PermissionAppService(IAppRepository<User, Guid> userRepo, 
         IAppRepository<Permission, int> permissionRepo,
-        IMapper mapper,
         IUserMongoRepository userMongoRepository) : IPermissionAppService
     {
         public async Task<List<string>> GetPermissions(Guid userId)

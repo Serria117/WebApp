@@ -8,6 +8,11 @@ namespace WebApp.Controllers;
 [ApiController, Route("/api/auth")]
 public class AuthController(IUserAppService userAppService) : ControllerBase
 {
+
+    /// <summary>
+    /// Authenticate user
+    /// </summary>
+    /// <returns>The access token.</returns>
     [HttpPost("login")]
     [AllowAnonymous]
     public async Task<IActionResult> Login(UserLoginDto login)

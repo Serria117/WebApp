@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using MongoDB.Driver.Core.WireProtocol.Messages;
 using WebApp.Core.DomainEntities;
 using WebApp.Payloads;
 using WebApp.Repositories;
@@ -10,13 +11,13 @@ using WebApp.Services.OrganizationService.Dto;
 using WebApp.Services.UserService;
 using X.Extensions.PagedList.EF;
 using X.PagedList;
+using ResponseMessage = WebApp.Enums.ResponseMessage;
 
 namespace WebApp.Services.OrganizationService;
 
 public interface IOrganizationAppService
 {
     Task<AppResponse> Create(OrganizationInputDto dto);
-
     Task<AppResponse> CreateMany(List<OrganizationInputDto> dto);
     Task<AppResponse> Find(PageRequest page);
     Task<AppResponse> GetOneById(Guid id);
@@ -125,12 +126,12 @@ public class OrganizationAppService(IAppRepository<Organization, Guid> orgRepo,
     public async Task<AppResponse> Find(PageRequest page)
     {
         var keyword = page.Keyword.RemoveSpace()?.UnSign();
-        var province = provinceRepo.GetQueryable();
-        var pagedResult = (await orgRepo.Find(condition: o => !o.Deleted && (string.IsNullOrEmpty(keyword) ||
-                                                                             o.UnsignName.Contains(keyword) ||
-                                                                             o.ShortName == null ||
-                                                                             o.ShortName.Contains(keyword) ||
-                                                                             o.TaxId.Contains(keyword)),
+        var pagedResult = (await orgRepo.Find(o => !o.Deleted
+                                                   && (string.IsNullOrEmpty(keyword) ||
+                                                       o.UnsignName.Contains(keyword) ||
+                                                       o.ShortName == null ||
+                                                       o.ShortName.Contains(keyword) ||
+                                                       o.TaxId.Contains(keyword)),
                                               sortBy: page.SortBy, order: page.OrderBy,
                                               include:
                                               [
@@ -175,7 +176,7 @@ public class OrganizationAppService(IAppRepository<Organization, Guid> orgRepo,
                                      ])
                                .FirstOrDefaultAsync();
         return org == null
-            ? AppResponse.ErrorResponse("Id not found")
+            ? AppResponse.ErrorResponse(ResponseMessage.NotFound)
             : AppResponse.SuccessResponse(org.ToDisplayDto());
     }
 
@@ -197,6 +198,7 @@ public class OrganizationAppService(IAppRepository<Organization, Guid> orgRepo,
         {
             errors.Add("Invalid district");
         }
+
         return errors;
     }
 }
