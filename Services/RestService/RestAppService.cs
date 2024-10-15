@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.SignalR;
 using MongoDB.Driver;
 using Newtonsoft.Json;
 using RestSharp;
+using WebApp.Authentication;
 using WebApp.Mongo.DeserializedModel;
 using WebApp.Payloads;
 using WebApp.Services.InvoiceService.dto;
@@ -64,7 +65,7 @@ public class RestAppService(IRestClient restClient,
             Message = $"Error: {response.StatusCode}"
         };
     }
-
+    
     public async Task<AppResponse> GetInvoiceListAsync(string token, string from, string to)
     {
         try
@@ -90,7 +91,7 @@ public class RestAppService(IRestClient restClient,
                 {
                     var pageCount = 1;
                     await Task.Delay(800);
-                    var result = await GetInvoice(token, enpoint,
+                    var result = await GetInvoiceDetail(token, enpoint,
                                                   dateRange.GetFromDateString(),
                                                   dateRange.GetToDateString(), type);
                     await hubContext.Clients.All.SendAsync("RetrieveList",
@@ -104,7 +105,7 @@ public class RestAppService(IRestClient restClient,
                     while (true)
                     {
                         pageCount++;
-                        var nextResult = await GetInvoice(token, enpoint,
+                        var nextResult = await GetInvoiceDetail(token, enpoint,
                                                           dateRange.GetFromDateString(), dateRange.GetToDateString(),
                                                           type, nextState);
                         await hubContext.Clients.All.SendAsync("RetrieveList",
@@ -129,7 +130,7 @@ public class RestAppService(IRestClient restClient,
         }
     }
 
-    private async Task<InvoiceResponseModel?> GetInvoice(string token, string endpoint,
+    private async Task<InvoiceResponseModel?> GetInvoiceDetail(string token, string endpoint,
                                                          string from, string to,
                                                          int type, string? state = null)
     {

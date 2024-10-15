@@ -52,12 +52,35 @@ public class InvoiceAppService(IInvoiceMongoRepository mongoInvoice,
         };
     }
 
+    public async Task<AppResponse> RecheckInvoiceStatus(string token, string from, string to)
+    {
+        var resultFromRest = await restService.GetInvoiceListAsync(token, from, to);
+        var total = 0L;
+        if (resultFromRest is { Success: true, Data: List<InvoiceDisplayDto> invoiceList })
+        {
+            
+            foreach (var inv in invoiceList)
+            {
+                total += await mongoInvoice.UpdateInvoiceStatus(inv.Id, inv.StatusNumber!.Value);
+            }
+        }
+        
+        return new AppResponse
+        {
+            Message = $"{total:N0} updated.",
+        };
+    }
+
     public async Task<AppResponse> SyncInvoices(string token, string from, string to)
     {
         logger.LogInformation("Sync Invoices from {from} to {to} at {time}", from, to, DateTime.Now.ToLocalTime());
         var result = await restService.GetInvoiceListAsync(token, from, to);
 
-        if (result is not { Success: true, Data: not null }) return AppResponse.ErrorResponse("Failed");
+        if (result is not { Success: true, Data: not null })
+        {
+            logger.LogWarning("Invoice not found. {message}", result.Message);
+            return AppResponse.ErrorResponse("Invoice not found");
+        }
 
         var invoiceList = (List<InvoiceDisplayDto>)result.Data;
 
@@ -73,11 +96,11 @@ public class InvoiceAppService(IInvoiceMongoRepository mongoInvoice,
         var countAdd = 1;
         var existedInvoices =
             await mongoInvoice.GetExistingInvoiceIdsAsync(invoiceList.Select(inv => inv.Id).ToList(), buyerTaxId);
-        Console.WriteLine(
-            $"Found {existedInvoices.Count}/{invoiceList.Count} Invoices already existed in collection, those record will be ignored");
+        logger.LogInformation(
+            "Found {existed}/{total} Invoices already existed in collection, those record will be ignored", existedInvoices.Count, invoiceList.Count);
 
         var newInvoices = invoiceList.Where(invoice => !existedInvoices.Contains(invoice.Id)).ToList();
-        Console.WriteLine($"{newInvoices.Count} Invoices will be retrieved and written.");
+        logger.LogInformation("{count} Invoices will be retrieved and written.", newInvoices.Count);
         if (newInvoices.Count == 0)
             return new AppResponse { Success = true, Message = "Already synced, no new invoices found" };
         foreach (var invoice in newInvoices)
@@ -86,7 +109,7 @@ public class InvoiceAppService(IInvoiceMongoRepository mongoInvoice,
 
             if (invDetail is not { Success: true })
             {
-                logger.LogWarning($"Error: {invDetail.Message}");
+                logger.LogWarning("Error: {}",invDetail.Message);
                 logger.LogInformation("Skipping...\n {data}", invoice.InvoiceNumber);
                 await hubContext.Clients.All.SendAsync("RetrieveList",
                                                        $"Failed to save invoice {invoice.InvoiceNumber} of {invoice.SellerTaxCode}, created at: {invoice.CreationDate:dd/MM/yyyy}");
@@ -97,8 +120,8 @@ public class InvoiceAppService(IInvoiceMongoRepository mongoInvoice,
             {
                 invoiceToAdd.Risk = riskService.IsInvoiceRisk(invoiceToAdd.Nbmst);
                 invoicesToSave.Add(invoiceToAdd);
-                Console.WriteLine(
-                    $"{countAdd}/{newInvoices.Count} - Invoice {invoiceToAdd.Shdon} added to collection.");
+                logger.LogInformation(
+                    "{count}/{new} - Invoice {invNum} added to collection.", countAdd, newInvoices.Count, invoiceToAdd.Shdon);
                 var completed = decimal.Divide(countAdd, newInvoices.Count) * 100;
                 await hubContext.Clients.All.SendAsync("RetrieveList",
                                                        $"Saving {countAdd}/{newInvoices.Count} - {completed:F2}% completed");
@@ -179,7 +202,6 @@ public class InvoiceAppService(IInvoiceMongoRepository mongoInvoice,
 
         return GenerateExcelFile(list, from, to);
     }
-
 
     private static byte[] GenerateExcelFile(List<InvoiceDisplayDto> invoiceList, string from, string to)
     {
@@ -282,8 +304,14 @@ public class InvoiceAppService(IInvoiceMongoRepository mongoInvoice,
                 sheetDetail.Range[startRow, 11].Value2 = item.Tax;
                 sheetDetail.Range[startRow, 11].NumberFormat = "#,##0";
                 sheetDetail.Range[startRow, 12].Value2 = inv.CreationDate?.ToLocalTime();
+                sheetDetail.Range[startRow, 12].Style.NumberFormat = "dd/mm/yyyy";
+
                 sheetDetail.Range[startRow, 13].Value2 = inv.SigningDate?.ToLocalTime();
+                sheetDetail.Range[startRow, 13].Style.NumberFormat = "dd/mm/yyyy";
+
                 sheetDetail.Range[startRow, 14].Value2 = inv.IssueDate?.ToLocalTime();
+                sheetDetail.Range[startRow, 13].Style.NumberFormat = "dd/MmmM/yyyy";
+
                 sheetDetail.Range[startRow, 15].Value2 = inv.Status;
                 sheetDetail.Range[startRow, 16].Value2 = inv.InvoiceType;
 
@@ -295,9 +323,12 @@ public class InvoiceAppService(IInvoiceMongoRepository mongoInvoice,
                 sheetSummary.Range[startRow, 2].Value2 = inv.InvoiceNotation;
                 sheetSummary.Range[startRow, 3].Text = inv.SellerTaxCode;
                 sheetSummary.Range[startRow, 4].Value2 = inv.SellerName;
-                sheetSummary.Range[startRow, 5].Value2 = inv.CreationDate?.ToLocalTime();
+                sheetSummary.Range[startRow, 5].Value2 = inv.CreationDate?.ToLocalTime();                
+                sheetSummary.Range[startRow, 5].Style.NumberFormat = "dd/mm/yyyy";
                 sheetSummary.Range[startRow, 6].Value2 = inv.SigningDate?.ToLocalTime();
+                sheetSummary.Range[startRow, 6].Style.NumberFormat = "dd/mm/yyyy";
                 sheetSummary.Range[startRow, 7].Value2 = inv.IssueDate?.ToLocalTime();
+                sheetSummary.Range[startRow, 7].Style.NumberFormat = "dd/mm/yyyy";
                 sheetSummary.Range[startRow, 8].Value2 = inv.TotalPrice;
                 sheetSummary.Range[startRow, 8].NumberFormat = "#,##0";
 
@@ -321,7 +352,7 @@ public class InvoiceAppService(IInvoiceMongoRepository mongoInvoice,
         sheetDetail.Range[4, 6, startRow - 1, 16].AutoFitColumns();
 
         sheetSummary.Range[4, 1, startRow - 1, 3].AutoFitColumns();
-        sheetSummary.Range[4, 5, startRow - 1, 12].AutoFitColumns();
+        sheetSummary.Range[4, 5, startRow - 1, 13].AutoFitColumns();
 
         #region Formula and filter
 
@@ -349,7 +380,7 @@ public class InvoiceAppService(IInvoiceMongoRepository mongoInvoice,
             cell.BorderAround(LineStyleType.Thin);
         }
 
-        foreach (var cell in sheetSummary.Range[4, 1, startRow - 1, 12])
+        foreach (var cell in sheetSummary.Range[4, 1, startRow - 1, 13])
         {
             cell.BorderAround(LineStyleType.Thin);
         }

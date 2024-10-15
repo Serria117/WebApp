@@ -17,6 +17,7 @@ using WebApp.Services.CommonService;
 using WebApp.Services.Mappers;
 using WebApp.Services.RestService;
 using WebApp.SignalrConfig;
+using Serilog;
 
 // Declare variables.
 var builder = WebApplication.CreateBuilder(args);
@@ -27,6 +28,17 @@ var jwtKey = config["JwtSettings:SecretKey"];
 var restSettings = config.GetSection("RestSharp").Get<RestSharpSetting>()!;
 var mongoSettings = config.GetSection("MongoDbSettings").Get<MongoDbSettings>()!;
 var origins = config.GetSection("AllowedOrigins").Get<string[]>() ?? [];
+
+//Config logging
+Log.Logger = new LoggerConfiguration()
+             .WriteTo.Console()
+             .WriteTo.File(
+                 path: "logs/log-.txt",        // Log file path with rolling logs
+                 rollingInterval: RollingInterval.Day,  // Roll log files daily
+                 outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}",
+                 restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Information // Minimum level to log
+             )
+             .CreateLogger();
 
 // Add services to the container.
 services.AddDbContext<AppDbContext>((serviceProvider, options) =>
@@ -142,6 +154,8 @@ services.AddSingleton<JwtService>();
 /* Add application services */
 services.AddAppServices();
 services.AddMongoServices(mongoSettings);
+
+builder.Host.UseSerilog();
 
 var app = builder.Build();
 
