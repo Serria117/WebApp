@@ -2,6 +2,7 @@
 using System.Net;
 using Microsoft.AspNetCore.SignalR;
 using MongoDB.Driver;
+using Newtonsoft.Json;
 using RestSharp;
 using WebApp.Mongo.DeserializedModel;
 using WebApp.Payloads;
@@ -189,14 +190,27 @@ public class RestAppService(IRestClient restClient,
             if (retryCount > 5) break;
         }
 
-        if (response is not { StatusCode: HttpStatusCode.OK, Data: not null })
+        if (response.StatusCode != HttpStatusCode.OK)
+        {
+            logger.LogWarning("Something wrong with the response {}", response.StatusCode);
             return new AppResponse
             {
                 Success = false,
                 Message = $"{response.StatusCode.ToString()} - {response.Content}",
                 Data = $"Failed to retrieve invoice [{invoice.InvoiceNumber}] of [{invoice.SellerName}]"
             };
-        Console.WriteLine($"{response.Data.Shdon} successfully retrieved");
-        return AppResponse.SuccessResponse(response.Data);
+        }
+
+        if (response is { Content: not null, Data: null })
+        {
+            return new AppResponse
+            {
+                Success = true,
+                Message = "99 - auto-deserialize failed",
+                Data = response.Content,
+            };
+        } 
+        //Console.WriteLine($"{response.Content} successfully retrieved");
+        return AppResponse.SuccessResponse(response.Data!);
     }
 }

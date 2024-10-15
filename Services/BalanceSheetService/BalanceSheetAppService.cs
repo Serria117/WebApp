@@ -47,7 +47,7 @@ public class BalanceSheetAppService(IAppRepository<Account, int> accountRepo,
 
         return AppResponse.SuccessResponse(new
         {
-            Id = savedBs.Id,
+            savedBs.Id,
             Valid = savedBs.IsValid,
             OpenCr = savedBs.SumOpenCredit,
             OpenDr = savedBs.SumOpenDebit,

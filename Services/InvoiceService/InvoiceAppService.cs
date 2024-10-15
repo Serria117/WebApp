@@ -35,9 +35,9 @@ public class InvoiceAppService(IInvoiceMongoRepository mongoInvoice,
         var invoiceList = await mongoInvoice.FindInvoices(taxCode: taxCode,
                                                           page: param.Page!.Value, size: param.Size!.Value,
                                                           from: param.From, to: param.To,
-                                                          seller: param.SellerKeyword, invNo: param.InvoiceNumber, 
-                                                          invoiceType: (int?) param.InvoiceType, 
-                                                          invoiceStatus: (int?) param.Status, 
+                                                          seller: param.SellerKeyword, invNo: param.InvoiceNumber,
+                                                          invoiceType: (int?)param.InvoiceType,
+                                                          invoiceStatus: (int?)param.Status,
                                                           risk: param.Risk);
 
         return new AppResponse
@@ -58,7 +58,7 @@ public class InvoiceAppService(IInvoiceMongoRepository mongoInvoice,
         var result = await restService.GetInvoiceListAsync(token, from, to);
 
         if (result is not { Success: true, Data: not null }) return AppResponse.ErrorResponse("Failed");
-        
+
         var invoiceList = (List<InvoiceDisplayDto>)result.Data;
 
         if (invoiceList.Count == 0)
@@ -66,9 +66,10 @@ public class InvoiceAppService(IInvoiceMongoRepository mongoInvoice,
             await hubContext.Clients.All.SendAsync("RetrieveList", "No new invoices found");
             return AppResponse.SuccessResponse("No new invoices found");
         }
-        
+
         var buyerTaxId = invoiceList.First().BuyerTaxCode;
         List<InvoiceDetailModel> invoicesToSave = [];
+        List<string> unDeserializedInvoices = [];
         var countAdd = 1;
         var existedInvoices =
             await mongoInvoice.GetExistingInvoiceIdsAsync(invoiceList.Select(inv => inv.Id).ToList(), buyerTaxId);
@@ -83,16 +84,16 @@ public class InvoiceAppService(IInvoiceMongoRepository mongoInvoice,
         {
             var invDetail = await restService.GetInvoiceDetail(token, invoice);
 
-            if (invDetail is not { Success: true, Data: InvoiceDetailModel })
+            if (invDetail is not { Success: true })
             {
                 logger.LogWarning($"Error: {invDetail.Message}");
-                logger.LogInformation("Skipping...\n {data}", invDetail.Data);
+                logger.LogInformation("Skipping...\n {data}", invoice.InvoiceNumber);
                 await hubContext.Clients.All.SendAsync("RetrieveList",
                                                        $"Failed to save invoice {invoice.InvoiceNumber} of {invoice.SellerTaxCode}, created at: {invoice.CreationDate:dd/MM/yyyy}");
                 continue;
             }
 
-            if (invDetail.Data is InvoiceDetailModel invoiceToAdd)
+            if (invDetail is { Success: true, Data: InvoiceDetailModel invoiceToAdd })
             {
                 invoiceToAdd.Risk = riskService.IsInvoiceRisk(invoiceToAdd.Nbmst);
                 invoicesToSave.Add(invoiceToAdd);
@@ -102,10 +103,21 @@ public class InvoiceAppService(IInvoiceMongoRepository mongoInvoice,
                 await hubContext.Clients.All.SendAsync("RetrieveList",
                                                        $"Saving {countAdd}/{newInvoices.Count} - {completed:F2}% completed");
             }
+
+            if (invDetail is { Success: true, Message: not null, Data: not null } && invDetail.Message.Contains("99"))
+            {
+                unDeserializedInvoices.Add((string)invDetail.Data);
+                var completed = decimal.Divide(countAdd, newInvoices.Count) * 100;
+                await hubContext.Clients.All.SendAsync("RetrieveList",
+                                                       $"Saving {countAdd}/{newInvoices.Count} - {completed:F2}% completed");
+            }
+
+            Console.WriteLine($"Undeserializable count: {unDeserializedInvoices.Count}");
             countAdd++;
         }
 
-        if (invoicesToSave.Count == 0) return AppResponse.ErrorResponse("Failed");
+        //save to mongodb
+        //if (invoicesToSave.Count == 0) return AppResponse.ErrorResponse("Failed");
         try
         {
             var jsonOption = new JsonSerializerOptions
@@ -113,26 +125,46 @@ public class InvoiceAppService(IInvoiceMongoRepository mongoInvoice,
                 PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
                 WriteIndented = true
             };
-            await hubContext.Clients.All.SendAsync("writeInvoices", "Writing to database...");
+            await hubContext.Clients.All.SendAsync("RetrieveList", "Writing to database...");
             var isInserted = await mongoInvoice.InsertInvoicesAsync(invoicesToSave
                                                                     .Select(i => i.DeserializeToBson(jsonOption))
                                                                     .ToList());
-            if (isInserted)
+            var isInsered2 = true;
+            if (unDeserializedInvoices.Count > 0)
             {
-                logger.LogInformation("Finished syncing invoices at {time}", DateTime.Now.ToLocalTime());
-                return new AppResponse { Message = $"Successfully inserted {invoicesToSave.Count} invoices." };
+                logger.LogWarning("{} undeserializable invoices, trying to save...", unDeserializedInvoices.Count);
+                isInsered2 = await mongoInvoice.InsertInvoicesAsync(unDeserializedInvoices
+                                                                    .Select(i => i.DeserializeToBson(jsonOption))
+                                                                    .ToList());
             }
 
-            logger.LogWarning("Unable to save invoices. Operation terminated at {time}",
-                              DateTime.Now.ToLocalTime());
-            return AppResponse.ErrorResponse("Nothing to insert.");
+            switch (isInserted)
+            {
+                case false when !isInsered2:
+                    logger.LogWarning("Unable to save invoices. Operation terminated at {time}",
+                                      DateTime.Now.ToLocalTime());
+                    return AppResponse.ErrorResponse("Nothing to insert.");
+                case true:
+                    logger.LogInformation("Finished syncing invoices at {time}", DateTime.Now.ToLocalTime());
+                    break;
+            }
+
+            if (isInsered2)
+            {
+                logger.LogInformation("Finished syncing undeserializable invoices at {time}",
+                                      DateTime.Now.ToLocalTime());
+            }
+
+            return new AppResponse
+            {
+                Message = $"Successfully inserted {invoicesToSave.Count + unDeserializedInvoices.Count} invoices."
+            };
         }
         catch (Exception e)
         {
             logger.LogError("Failed with Error: {mess}", e.Message);
             return AppResponse.ErrorResponse("Failed");
         }
-
     }
 
     public async Task<byte[]> ExportExcel(string taxCode, string from, string to)
@@ -140,10 +172,10 @@ public class InvoiceAppService(IInvoiceMongoRepository mongoInvoice,
         var invoiceList = await mongoInvoice.FindInvoices(taxCode: taxCode,
                                                           page: 1, size: 10_000,
                                                           from: from, to: to,
-                                                          seller: null, invNo: null, 
+                                                          seller: null, invNo: null,
                                                           invoiceType: null, invoiceStatus: null, risk: null);
-        var list = ((List<InvoiceDetailDoc>)invoiceList.Data).Select(inv => inv.ToDisplayModel())
-                                                             .ToList();
+        var list = invoiceList.Data.Select(inv => inv.ToDisplayModel())
+                              .ToList();
 
         return GenerateExcelFile(list, from, to);
     }
