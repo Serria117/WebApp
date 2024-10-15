@@ -80,6 +80,11 @@ public class OrganizationController(IOrganizationAppService orgService) : Contro
         return result.Success ? Ok(result) : BadRequest(result);
     }
 
+    /// <summary>
+    /// Check for duplicated taxId
+    /// </summary>
+    /// <param name="taxId"></param>
+    /// <returns></returns>
     [HttpGet("exist/{taxId}")]
     [HasAuthority(Permissions.OrgView)]
     public async Task<AppResponse> CheckTaxId(string taxId)

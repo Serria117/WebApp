@@ -12,7 +12,6 @@ using WebApp.Core.Data;
 using WebApp.Core.DomainEntities;
 using WebApp.Mongo;
 using WebApp.Register;
-using WebApp.Repositories;
 using WebApp.Services.CommonService;
 using WebApp.Services.Mappers;
 using WebApp.Services.RestService;
@@ -154,9 +153,7 @@ services.AddSingleton<JwtService>();
 /* Add application services */
 services.AddAppServices();
 services.AddMongoServices(mongoSettings);
-
 builder.Host.UseSerilog();
-
 var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())

@@ -13,6 +13,10 @@ namespace WebApp.Controllers;
 public class InvoiceController(IRestAppService restService,
                                IInvoiceAppService invService) : ControllerBase
 {
+    /// <summary>
+    /// Get capcha data from hoadondientu.gdt.gov.vn for login
+    /// </summary>
+    /// <returns></returns>
     [HttpGet("capcha-login")]
     public async Task<IActionResult> GetCapcha()
     {
@@ -20,6 +24,11 @@ public class InvoiceController(IRestAppService restService,
         return Ok(result);
     }
 
+    /// <summary>
+    /// Authenticate with hoadondientu.gdt.gov.vn
+    /// </summary>
+    /// <param name="loginModel"></param>
+    /// <returns></returns>
     [HttpPost("capcha-login")]
     public async Task<IActionResult> LoginInvoiceService(InvoiceLoginModel loginModel)
     {
@@ -28,6 +37,12 @@ public class InvoiceController(IRestAppService restService,
         return Ok(result);
     }
 
+    /// <summary>
+    /// Find and get invoices list in database
+    /// </summary>
+    /// <param name="taxId"></param>
+    /// <param name="parameters"></param>
+    /// <returns></returns>
     [HttpGet("find/{taxId}")]
     public async Task<IActionResult> FindInvoice(string taxId, [FromQuery] InvoiceParams parameters)
     {
@@ -35,6 +50,13 @@ public class InvoiceController(IRestAppService restService,
         return Ok(result);
     }
 
+    /*/// <summary>
+    /// Get invoices from hoadondientu.gdt.gov.vn
+    /// </summary>
+    /// <param name="token"></param>
+    /// <param name="from"></param>
+    /// <param name="to"></param>
+    /// <returns></returns>
     [HttpGet("extract")]
     public async Task<IActionResult> ExtractInvoice(string token, string from, string to)
     {
@@ -50,8 +72,13 @@ public class InvoiceController(IRestAppService restService,
         }
 
         return Ok(AppResponse.SuccessResponse(details));
-    }
+    }*/
 
+    /// <summary>
+    /// Sync invoices with detail from hoadondientu.gdt.gov.vn
+    /// </summary>
+    /// <param name="request"></param>
+    /// <returns></returns>
     [HttpPost("sync")]
     public async Task<IActionResult> SyncInvoice(SyncInvoiceRequest request)
     {
@@ -59,6 +86,13 @@ public class InvoiceController(IRestAppService restService,
         return Ok(res);
     }
 
+    /// <summary>
+    /// Download invoices list as Excel file
+    /// </summary>
+    /// <param name="taxId"></param>
+    /// <param name="from"></param>
+    /// <param name="to"></param>
+    /// <returns></returns>
     [HttpGet("download/{taxId}")]
     public async Task<IActionResult> DownloadInvoice(string taxId, string from, string to)
     {

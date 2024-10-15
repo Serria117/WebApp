@@ -1,6 +1,4 @@
-@WebApp_HostAddress = http://localhost:5014
-
-GET {{WebApp_HostAddress}}/weatherforecast/
+GET http://localhost:80/api/item?id=99
 Accept: application/json
 
 ###

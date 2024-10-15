@@ -21,6 +21,7 @@ public interface IInvoiceAppService
     Task<AppResponse> GetInvoices(string taxCode, InvoiceParams invoiceParams);
     Task<AppResponse> SyncInvoices(string token, string from, string to);
     Task<byte[]> ExportExcel(string taxCode, string from, string to);
+    Task<AppResponse> RecheckInvoiceStatus(string token, string from, string to);
 }
 
 public class InvoiceAppService(IInvoiceMongoRepository mongoInvoice,
@@ -67,7 +68,7 @@ public class InvoiceAppService(IInvoiceMongoRepository mongoInvoice,
         
         return new AppResponse
         {
-            Message = $"{total:N0} updated.",
+            Message = $"{total:N0} invoices updated.",
         };
     }
 

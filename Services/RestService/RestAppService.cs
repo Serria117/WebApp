@@ -24,7 +24,6 @@ public interface IRestAppService
 
 public class RestAppService(IRestClient restClient,
                             RestSharpSetting setting,
-                            IMongoClient mongo,
                             ILogger<RestAppService> logger,
                             IHubContext<AppHub> hubContext) : IRestAppService
 {
