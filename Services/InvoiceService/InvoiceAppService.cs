@@ -18,7 +18,21 @@ namespace WebApp.Services.InvoiceService;
 
 public interface IInvoiceAppService
 {
+    /// <summary>
+    /// Find invoices by organization and query parameters
+    /// </summary>
+    /// <param name="taxCode"></param>
+    /// <param name="invoiceParams"></param>
+    /// <returns>The invoice list</returns>
     Task<AppResponse> GetInvoices(string taxCode, InvoiceParams invoiceParams);
+    
+    /// <summary>
+    /// Sync invoices from hoadondientu.gdt.gov.vn
+    /// </summary>
+    /// <param name="token">The access token from hoadondientu.gdt.gov.vn</param>
+    /// <param name="from">Start date</param>
+    /// <param name="to">End date</param>
+    /// <returns>Success result if all invoices were synced</returns>
     Task<AppResponse> SyncInvoices(string token, string from, string to);
     Task<byte[]> ExportExcel(string taxCode, string from, string to);
     Task<AppResponse> RecheckInvoiceStatus(string token, string from, string to);
@@ -31,23 +45,24 @@ public class InvoiceAppService(IInvoiceMongoRepository mongoInvoice,
                                IHubContext<AppHub> hubContext,
                                IUserManager userManager) : AppServiceBase(userManager), IInvoiceAppService
 {
-    public async Task<AppResponse> GetInvoices(string taxCode, InvoiceParams param)
+    
+    public async Task<AppResponse> GetInvoices(string taxCode, InvoiceParams invoiceParams)
     {
         var invoiceList = await mongoInvoice.FindInvoices(taxCode: taxCode,
-                                                          page: param.Page!.Value, size: param.Size!.Value,
-                                                          from: param.From, to: param.To,
-                                                          seller: param.SellerKeyword, invNo: param.InvoiceNumber,
-                                                          invoiceType: (int?)param.InvoiceType,
-                                                          invoiceStatus: (int?)param.Status,
-                                                          risk: param.Risk);
+                                                          page: invoiceParams.Page!.Value, size: invoiceParams.Size!.Value,
+                                                          from: invoiceParams.From, to: invoiceParams.To,
+                                                          seller: invoiceParams.SellerKeyword, invNo: invoiceParams.InvoiceNumber,
+                                                          invoiceType: (int?)invoiceParams.InvoiceType,
+                                                          invoiceStatus: (int?)invoiceParams.Status,
+                                                          risk: invoiceParams.Risk);
 
         return new AppResponse
         {
             Data = invoiceList.Data.Select(inv => inv.ToDisplayModel()).ToList(),
             Message = "Ok",
             TotalCount = invoiceList.Total,
-            PageNumber = param.Page,
-            PageSize = param.Size,
+            PageNumber = invoiceParams.Page,
+            PageSize = invoiceParams.Size,
             Success = true,
             PageCount = invoiceList.PageCount
         };

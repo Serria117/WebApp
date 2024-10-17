@@ -92,13 +92,25 @@ public class InvoiceController(IRestAppService restService,
     /// <param name="taxId"></param>
     /// <param name="from"></param>
     /// <param name="to"></param>
-    /// <returns></returns>
+    /// <returns>The Excel file contains invoices in search range</returns>
     [HttpGet("download/{taxId}")]
     public async Task<IActionResult> DownloadInvoice(string taxId, string from, string to)
     {
         var stream = await invService.ExportExcel(taxId, from, to);
-        var fileName = $"{taxId}_{from}_{to}.xlsx";
+        var fileName = $"{taxId}_{from}_{to}_{Ulid.NewUlid()}.xlsx";
         Response.Headers["X-Filename"] = fileName;
         return File(stream, ContentType.ApplicationOfficeSpreadSheet, fileName);
+    }
+
+    /// <summary>
+    /// Recheck if invoices status has changed
+    /// </summary>
+    /// <param name="request"></param>
+    /// <returns>The number of invoice that has been updated</returns>
+    [HttpPost("recheck")]
+    public async Task<IActionResult> RecheckInvoice(SyncInvoiceRequest request)
+    {
+        var result = await invService.RecheckInvoiceStatus(request.Token, request.From, request.To);
+        return Ok(result);
     }
 }
