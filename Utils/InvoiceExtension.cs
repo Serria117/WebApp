@@ -45,18 +45,18 @@ public static class InvoiceExtension
                 _ => string.Empty
             },
             InvoiceTypeNumber = doc.Ttxly,
-            GoodsDetail = doc.Hdhhdvu.Select(h => new Goods
+            GoodsDetail = doc.Hdhhdvu.Select(g => new Goods
             {
-                Name = h.Ten,
-                UnitCount = h.Dvtinh,
-                UnitPrice = h.Dgia,
-                Quantity = h.Sluong,
-                PreTaxPrice = h.Thtien,
-                Rate = h.Tsuat,
-                Discount = h.Stckhau,
-                Tax = h.Thtien is null || h.Tsuat is null  
+                Name = g.Ten,
+                UnitCount = g.Dvtinh,
+                UnitPrice = g.Dgia,
+                Quantity = g.Sluong,
+                PreTaxPrice = g.Thtien,
+                Rate = g.Tsuat,
+                Discount = g.Stckhau,
+                Tax = g.Thtien is null || g.Tsuat is null  
                     ? 0 
-                    : Math.Round(h.Thtien.Value * h.Tsuat.Value, 0)
+                    : Math.Round(g.Thtien.Value * g.Tsuat.Value, 0)
             }).ToList(),
         };
     }

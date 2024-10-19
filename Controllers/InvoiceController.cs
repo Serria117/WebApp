@@ -18,9 +18,9 @@ public class InvoiceController(IRestAppService restService,
     /// </summary>
     /// <returns></returns>
     [HttpGet("capcha-login")]
-    public async Task<IActionResult> GetCapcha()
+    public async Task<IActionResult> GetCaptcha()
     {
-        var result = await restService.GetCapcha();
+        var result = await restService.GetCaptcha();
         return Ok(result);
     }
 

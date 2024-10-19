@@ -17,7 +17,7 @@ namespace WebApp.Services.RestService;
 public interface IRestAppService
 {
     Task<AppResponse> Authenticate(InvoiceLoginModel login);
-    Task<CaptchaModel?> GetCapcha();
+    Task<CaptchaModel?> GetCaptcha();
     Task<AppResponse> GetInvoiceListAsync(string token, string from, string to);
     Task<AppResponse> GetInvoiceDetail(string token, InvoiceDisplayDto invoice);
 }
@@ -27,7 +27,7 @@ public class RestAppService(IRestClient restClient,
                             ILogger<RestAppService> logger,
                             IHubContext<AppHub> hubContext) : IRestAppService
 {
-    public async Task<CaptchaModel?> GetCapcha()
+    public async Task<CaptchaModel?> GetCaptcha()
     {
         var request = new RestRequest("/captcha", Method.Get);
         request.AddHeader("Cookie", setting.Cookie);
@@ -64,7 +64,7 @@ public class RestAppService(IRestClient restClient,
             Message = $"Error: {response.StatusCode}"
         };
     }
-    
+
     public async Task<AppResponse> GetInvoiceListAsync(string token, string from, string to)
     {
         try
@@ -91,8 +91,8 @@ public class RestAppService(IRestClient restClient,
                     var pageCount = 1;
                     await Task.Delay(800);
                     var result = await GetInvoiceDetail(token, enpoint,
-                                                  dateRange.GetFromDateString(),
-                                                  dateRange.GetToDateString(), type);
+                                                        dateRange.GetFromDateString(),
+                                                        dateRange.GetToDateString(), type);
                     await hubContext.Clients.All.SendAsync("RetrieveList",
                                                            $"Get invoice type {type} of page {pageCount} - from {dateRange.GetFromDateString()} to {dateRange.GetToDateString()}");
                     Console.WriteLine(
@@ -105,8 +105,9 @@ public class RestAppService(IRestClient restClient,
                     {
                         pageCount++;
                         var nextResult = await GetInvoiceDetail(token, enpoint,
-                                                          dateRange.GetFromDateString(), dateRange.GetToDateString(),
-                                                          type, nextState);
+                                                                dateRange.GetFromDateString(),
+                                                                dateRange.GetToDateString(),
+                                                                type, nextState);
                         await hubContext.Clients.All.SendAsync("RetrieveList",
                                                                $"Get invoice type {type} of page {pageCount} - from {dateRange.GetFromDateString()} to {dateRange.GetToDateString()}");
                         Console.WriteLine(
@@ -130,8 +131,8 @@ public class RestAppService(IRestClient restClient,
     }
 
     private async Task<InvoiceResponseModel?> GetInvoiceDetail(string token, string endpoint,
-                                                         string from, string to,
-                                                         int type, string? state = null)
+                                                               string from, string to,
+                                                               int type, string? state = null)
     {
         var request = new RestRequest(endpoint, Method.Get);
         request.AddHeader("Cookie", setting.Cookie);
@@ -166,7 +167,9 @@ public class RestAppService(IRestClient restClient,
         request.AddQueryParameter("khmshdon", invoice.InvoiceGroupNotation.ToString());
 
         Console.WriteLine(
-            $"Extracting {invoice.InvoiceNumber} - {invoice.SellerTaxCode} - {invoice.CreationDate:dd/MM/yyyy} - {invoice.SellerName}");
+            $"Extracting {invoice.InvoiceNumber} - {invoice.SellerTaxCode} " +
+            $"- {invoice.CreationDate:dd/MM/yyyy} " +
+            $"- {invoice.SellerName}");
         Console.WriteLine($"Invoice status: {invoice.StatusNumber} - {invoice.Status}");
         Console.WriteLine($"Invoice type: {invoice.InvoiceType}");
 
@@ -179,6 +182,7 @@ public class RestAppService(IRestClient restClient,
         const int delay = 20;
         while (statusCode == HttpStatusCode.TooManyRequests)
         {
+            if (retryCount > 5) break;
             Console.WriteLine($"Too many requests. Retrying after {delay} seconds...");
             await hubContext.Clients.All.SendAsync(
                 "429", $"Too many requests. Retry {retryCount + 1}/5 after {delay} seconds...");
@@ -187,7 +191,7 @@ public class RestAppService(IRestClient restClient,
             statusCode = response.StatusCode;
             retryCount++;
             Console.WriteLine($"Retry {retryCount} completed");
-            if (retryCount > 5) break;
+            
         }
 
         if (response.StatusCode != HttpStatusCode.OK)
@@ -209,7 +213,8 @@ public class RestAppService(IRestClient restClient,
                 Message = "99 - auto-deserialize failed",
                 Data = response.Content,
             };
-        } 
+        }
+
         //Console.WriteLine($"{response.Content} successfully retrieved");
         return AppResponse.SuccessResponse(response.Data!);
     }
