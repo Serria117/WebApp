@@ -34,7 +34,7 @@ public class BalanceSheetAppService(IAppRepository<Account, int> accountRepo,
 {
     public async Task<AppResponse> CreateImportedBalanceSheet(Guid orgId, BalanceSheetParams input)
     {
-        if (!await orgRepo.ExistAsync(o => o.Id == orgId)) return AppResponse.ErrorResponse("org id cannot be found");
+        if (!await orgRepo.ExistAsync(o => o.Id == orgId)) return AppResponse.Error("org id cannot be found");
         var balanceSheet = new ImportedBalanceSheet
         {
             Organization = orgRepo.Attach(orgId),
@@ -66,7 +66,7 @@ public class BalanceSheetAppService(IAppRepository<Account, int> accountRepo,
                                  order: SortOrder.DESC)
                            .ToListAsync();
         return result.IsNullOrEmpty()
-            ? AppResponse.ErrorResponse(ResponseMessage.NotFound)
+            ? AppResponse.Error(ResponseMessage.NotFound)
             : AppResponse.SuccessResponse(result.MapCollection(x => x.ToDisplayDto()));
     }
 
@@ -76,7 +76,7 @@ public class BalanceSheetAppService(IAppRepository<Account, int> accountRepo,
                            .Find(x => x.Id == id && !x.Deleted, include: [nameof(ImportedBalanceSheet.Details)])
                            .FirstOrDefaultAsync();
         
-        if(result is null) return AppResponse.ErrorResponse(ResponseMessage.NotFound);
+        if(result is null) return AppResponse.Error(ResponseMessage.NotFound);
         
         return AppResponse.SuccessResponse(result.ToDisplayDto());
     }
@@ -112,7 +112,7 @@ public class BalanceSheetAppService(IAppRepository<Account, int> accountRepo,
     public async Task<AppResponse> HardDeleteImportedBalanceSheet(int id)
     {
         var result = await importedBsRepo.HardDeleteAsync(id);
-        return result ? AppResponse.Ok() : AppResponse.ErrorResponse(ResponseMessage.NotFound);
+        return result ? AppResponse.Ok() : AppResponse.Error(ResponseMessage.NotFound);
     }
 
     private static void CalculateBalanceSheetTotal(ImportedBalanceSheet bs)

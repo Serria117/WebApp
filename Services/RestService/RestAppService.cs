@@ -19,6 +19,12 @@ public interface IRestAppService
     Task<AppResponse> Authenticate(InvoiceLoginModel login);
     Task<CaptchaModel?> GetCaptcha();
     Task<AppResponse> GetInvoiceListAsync(string token, string from, string to);
+    /// <summary>
+    /// Attempt to get an invoice's detail of goods sold
+    /// </summary>
+    /// <param name="token">Bearer token to use in the request to hoadondientu service</param>
+    /// <param name="invoice">The invoice object to get detail</param>
+    /// <returns>A response object containing the result of the request</returns>
     Task<AppResponse> GetInvoiceDetail(string token, InvoiceDisplayDto invoice);
 }
 
@@ -126,7 +132,7 @@ public class RestAppService(IRestClient restClient,
         catch (Exception e)
         {
             logger.LogWarning("Interupted with error [{err}] at {time}", e.Message, DateTime.Now.ToLocalTime());
-            return AppResponse.ErrorResponse(e.Message);
+            return AppResponse.Error(e.Message);
         }
     }
 
@@ -194,6 +200,17 @@ public class RestAppService(IRestClient restClient,
             
         }
 
+        if (retryCount > 5)
+        {
+            return new AppResponse
+            {
+                Code = "429",
+                Success = false,
+                Message = "429 - Too many request",
+                Data = null
+            };
+        }
+        
         if (response.StatusCode != HttpStatusCode.OK)
         {
             logger.LogWarning("Something wrong with the response {}", response.StatusCode);
@@ -210,7 +227,7 @@ public class RestAppService(IRestClient restClient,
             return new AppResponse
             {
                 Success = true,
-                Message = "99 - auto-deserialize failed",
+                Message = "99 - auto-deserialize failed. Invoice object will be store as string and attempted to be deserialized using JSON converter",
                 Data = response.Content,
             };
         }

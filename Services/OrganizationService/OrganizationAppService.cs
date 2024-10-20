@@ -34,10 +34,10 @@ public class OrganizationAppService(IAppRepository<Organization, Guid> orgRepo,
     public async Task<AppResponse> Create(OrganizationInputDto dto)
     {
         if (await TaxIdExist(dto.TaxId))
-            return AppResponse.ErrorResponse("Tax Id has already existed.");
+            return AppResponse.Error("Tax Id has already existed.");
 
         var invalidMessage = await ValidInputDto(dto);
-        if (!invalidMessage.IsNullOrEmpty()) return AppResponse.ErrorResponse("Invalid input", invalidMessage);
+        if (!invalidMessage.IsNullOrEmpty()) return AppResponse.Error("Invalid input", invalidMessage);
 
         var newOrg = dto.ToEntity();
         newOrg.District = districtRepo.Attach(dto.DistrictId!.Value);
@@ -148,7 +148,7 @@ public class OrganizationAppService(IAppRepository<Organization, Guid> orgRepo,
     public async Task<AppResponse> Update(Guid orgId, OrganizationInputDto updateDto)
     {
         var invalidMessage = await ValidInputDto(updateDto);
-        if (!invalidMessage.IsNullOrEmpty()) return AppResponse.ErrorResponse("Invalid input", invalidMessage);
+        if (!invalidMessage.IsNullOrEmpty()) return AppResponse.Error("Invalid input", invalidMessage);
 
         var foundOrg = await orgRepo.Find(o => o.Id == orgId && !o.Deleted).FirstOrDefaultAsync();
         if (foundOrg is null)
@@ -176,7 +176,7 @@ public class OrganizationAppService(IAppRepository<Organization, Guid> orgRepo,
                                      ])
                                .FirstOrDefaultAsync();
         return org == null
-            ? AppResponse.ErrorResponse(ResponseMessage.NotFound)
+            ? AppResponse.Error(ResponseMessage.NotFound)
             : AppResponse.SuccessResponse(org.ToDisplayDto());
     }
 

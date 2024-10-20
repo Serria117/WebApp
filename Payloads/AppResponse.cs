@@ -6,6 +6,7 @@ namespace WebApp.Payloads;
 
 public class AppResponse
 {
+    public string? Code { get; set; }
     public bool Success { get; set; } = true;
     public string? Message { get; set; }
     public long? PageNumber { get; set; }
@@ -16,16 +17,23 @@ public class AppResponse
 
     public static AppResponse Ok()
     {
-        return new AppResponse{Success = true};
+        return new AppResponse { Code = "200", Success = true };
     }
+
     public static AppResponse Ok(string message)
     {
-        return new AppResponse{Success = true, Message = message};
+        return new AppResponse { Code = "200", Success = true, Message = message };
+    }
+
+    public static AppResponse Ok(string code, string message)
+    {
+        return new AppResponse { Success = true, Message = message, Code = code };
     }
     public static AppResponse SuccessResponse(object data)
     {
         AppResponse response = new()
         {
+            Code = "200",
             Message = "OK",
             Data = data,
             TotalCount = 1
@@ -42,10 +50,11 @@ public class AppResponse
                 response.PageCount = pagedList.PageCount;
                 break;
         }
+
         return response;
     }
 
-    public static AppResponse ErrorResponse(string mesage, params string[] details)
+    public static AppResponse Error(string mesage, params string[] details)
     {
         return new AppResponse
         {
@@ -54,13 +63,35 @@ public class AppResponse
             Data = !details.IsNullOrEmpty() ? details.ToList() : null
         };
     }
-    
-    public static AppResponse ErrorResponse(string mesage, List<string> details)
+
+    public static AppResponse Error(string mesage, List<string> details)
     {
         return new AppResponse
         {
             Success = false,
             Message = mesage,
+            Data = details
+        };
+    }
+
+    public static AppResponse Error400(string message, params string[] details)
+    {
+        return new AppResponse
+        {
+            Code = "400",
+            Success = false,
+            Message = message,
+            Data = details
+        };
+    }
+
+    public static AppResponse Error500(string message, params string[] details)
+    {
+        return new AppResponse
+        {
+            Code = "500",
+            Success = false,
+            Message = message,
             Data = details
         };
     }

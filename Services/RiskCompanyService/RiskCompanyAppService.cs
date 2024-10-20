@@ -73,12 +73,12 @@ public class RiskCompanyAppService(IAppRepository<RiskCompany, int> riskCompanyR
     public async Task<AppResponse> SoftDeleteAsync(int id)
     {
         var deleteResult = await riskCompanyRepo.SoftDeleteAsync(id);
-        return deleteResult ? AppResponse.Ok() : AppResponse.ErrorResponse($"Failed to delete Id: {id}");
+        return deleteResult ? AppResponse.Ok() : AppResponse.Error($"Failed to delete Id: {id}");
     }
 
     public async Task<AppResponse> SoftDeleteManyAsync(List<int> ids)
     {
         var deleteResult = await riskCompanyRepo.SoftDeleteManyAsync(ids.ToArray());
-        return deleteResult ? AppResponse.Ok() : AppResponse.ErrorResponse("Failed to delete");
+        return deleteResult ? AppResponse.Ok() : AppResponse.Error("Failed to delete");
     }
 }

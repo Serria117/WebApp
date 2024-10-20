@@ -96,10 +96,10 @@ public class InvoiceController(IRestAppService restService,
     [HttpGet("download/{taxId}")]
     public async Task<IActionResult> DownloadInvoice(string taxId, string from, string to)
     {
-        var stream = await invService.ExportExcel(taxId, from, to);
+        var fileByte = await invService.ExportExcel(taxId, from, to);
         var fileName = $"{taxId}_{from}_{to}_{Ulid.NewUlid()}.xlsx";
         Response.Headers["X-Filename"] = fileName;
-        return File(stream, ContentType.ApplicationOfficeSpreadSheet, fileName);
+        return File(fileByte, ContentType.ApplicationOfficeSpreadSheet, fileName);
     }
 
     /// <summary>
@@ -111,6 +111,10 @@ public class InvoiceController(IRestAppService restService,
     public async Task<IActionResult> RecheckInvoice(SyncInvoiceRequest request)
     {
         var result = await invService.RecheckInvoiceStatus(request.Token, request.From, request.To);
+        if (result.Code == "207")
+        {
+            return StatusCode(207, result);
+        }
         return Ok(result);
     }
 }

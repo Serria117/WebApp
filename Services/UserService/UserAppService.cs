@@ -126,15 +126,15 @@ namespace WebApp.Services.UserService
         {
             var id = userManager.CurrentUserId();
             if (id is null)
-                return AppResponse.ErrorResponse("Unauthorized access");
+                return AppResponse.Error("Unauthorized access");
 
             var user = await userRepository.FindByIdAsync(Guid.Parse(id));
             if (user is null)
-                return AppResponse.ErrorResponse("User not found");
+                return AppResponse.Error("User not found");
 
             var checkOldPassword = oldPassword.PasswordVerify(user.Password);
             if (!checkOldPassword)
-                return AppResponse.ErrorResponse("Invalid old password");
+                return AppResponse.Error("Invalid old password");
 
             user.Password = newPassword.BCryptHash();
             await userRepository.UpdateAsync(user);

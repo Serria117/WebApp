@@ -48,14 +48,14 @@ public class RegionAppService(ILogger<RegionAppService> logger,
         catch (Exception e)
         {
             logger.LogError(e.Message);
-            return AppResponse.ErrorResponse("Failed to create provinces");
+            return AppResponse.Error("Failed to create provinces");
         }
     }
 
     public async Task<AppResponse> CreateDistrictAsync(DistrictCreateDto input)
     {
         if (!await provinceRepo.ExistAsync(x => x.Id == input.ProvinceId))
-            return AppResponse.ErrorResponse("Province could not be found");
+            return AppResponse.Error("Province could not be found");
         var district = input.ToEntity(provinceRepo);
         var saved = await districtRepo.CreateAsync(district);
         return AppResponse.SuccessResponse(saved.ToDisplayDto());
@@ -66,7 +66,7 @@ public class RegionAppService(ILogger<RegionAppService> logger,
         try
         {
             if (!await provinceRepo.ExistAsync(x => x.Id == provinceId))
-                return AppResponse.ErrorResponse("Province could not be found");
+                return AppResponse.Error("Province could not be found");
             var districts = input.MapCollection(x => x.ToEntity(provinceRepo)).ToList();
             await districtRepo.CreateManyAsync(districts);
             return AppResponse.SuccessResponse("OK");
@@ -74,14 +74,14 @@ public class RegionAppService(ILogger<RegionAppService> logger,
         catch (Exception e)
         {
             logger.LogError("Error: {message}", e.Message);
-            return AppResponse.ErrorResponse("Failed to create districts");
+            return AppResponse.Error("Failed to create districts");
         }
     }
 
     public async Task<AppResponse> CreateTaxOfficeAsync(TaxOfficeCreateDto input)
     {
         if (!await provinceRepo.ExistAsync(x => x.Id == input.ProvinceId))
-            return AppResponse.ErrorResponse("Province could not be found");
+            return AppResponse.Error("Province could not be found");
         var taxOffice = input.ToEntity(provinceRepo);
         var saved = await taxRepo.CreateAsync(taxOffice);
         return AppResponse.SuccessResponse(saved.ToDisplayDto());
@@ -92,7 +92,7 @@ public class RegionAppService(ILogger<RegionAppService> logger,
         try
         {
             if (!await provinceRepo.ExistAsync(x => x.Id == pId))
-                return AppResponse.ErrorResponse("Province could not be found");
+                return AppResponse.Error("Province could not be found");
             var taxOffices = input.MapCollection(x => x.ToEntity(provinceRepo)).ToList();
 
             await taxRepo.CreateManyAsync(taxOffices);
@@ -101,7 +101,7 @@ public class RegionAppService(ILogger<RegionAppService> logger,
         catch (Exception e)
         {
             logger.LogError("{message}", e.Message);
-            return AppResponse.ErrorResponse("Failed to create tax offices");
+            return AppResponse.Error("Failed to create tax offices");
         }
     }
 
@@ -120,7 +120,7 @@ public class RegionAppService(ILogger<RegionAppService> logger,
     {
         var province = await provinceRepo.FindByIdAsync(id);
         return province == null
-            ? AppResponse.ErrorResponse("Province could not be found")
+            ? AppResponse.Error("Province could not be found")
             : AppResponse.SuccessResponse(province.ToDisplayDto());
     }
 
