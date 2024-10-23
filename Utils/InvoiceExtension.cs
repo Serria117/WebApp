@@ -12,17 +12,21 @@ public static class InvoiceExtension
         return new InvoiceDisplayDto
         {
             Id = doc.Id ?? string.Empty,
+            VerifyCode = doc.Mhdon,
             StatusNumber = doc.Tthai,
             BuyerName = doc.Nmten ?? string.Empty,
             BuyerTaxCode = doc.Nmmst ?? string.Empty,
+            BuyerAddress = doc.Nmdchi,
             SellerName = doc.Nbten ?? string.Empty,
             SellerTaxCode = doc.Nbmst ?? string.Empty,
+            SellerAddress = doc.Nbdchi,
             InvoiceNotation = doc.Khhdon ?? string.Empty,
             InvoiceGroupNotation = doc.Khmshdon,
             InvoiceNumber = doc.Shdon?.ToString(),
             TotalPrice = doc.Tgtcthue,
             Vat = doc.Tgtthue,
             TotalPriceVat = doc.Tgtttbso,
+            TotalInWord = doc.Tgtttbchu,
             CreationDate = doc.Tdlap?.ToLocalTime(),
             SigningDate = doc.Nky?.ToLocalTime(),
             IssueDate = doc.Ncma?.ToLocalTime(),
@@ -149,6 +153,11 @@ public static class InvoiceExtension
                 _ => string.Empty
             },
             InvoiceTypeNumber = inv.Ttxly,
+            BuyerAddress = inv.Nmdchi,
+            SellerAddress = inv.Nbdchi,
+            TotalInWord = inv.Tgtttbchu,
+            VerifyCode = inv.Mhdon
+            
         };
     }
 }

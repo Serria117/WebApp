@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using System.Net;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using WebApp.Enums;
 using WebApp.Payloads;
@@ -111,10 +112,21 @@ public class InvoiceController(IRestAppService restService,
     public async Task<IActionResult> RecheckInvoice(SyncInvoiceRequest request)
     {
         var result = await invService.RecheckInvoiceStatus(request.Token, request.From, request.To);
-        if (result.Code == "207")
-        {
-            return StatusCode(207, result);
-        }
-        return Ok(result);
+        return result.Code == "207" 
+            ? StatusCode(StatusCodes.Status207MultiStatus, result) 
+            : Ok(result);
+    }
+
+    /// <summary>
+    /// Get a single invoice value
+    /// </summary>
+    /// <param name="taxId">Organization's taxId</param>
+    /// <param name="id">Invoice id</param>
+    /// <returns></returns>
+    [HttpGet("get/{taxId}")]
+    public async Task<IActionResult> GetInvoice(string taxId, string id)
+    {
+        var result = await invService.FindOne(taxId, id);
+        return result.Code == "200" ? Ok(result) : NotFound(result);
     }
 }

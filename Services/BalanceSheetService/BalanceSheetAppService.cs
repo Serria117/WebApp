@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Spire.Xls;
+using WebApp.Core.Data;
 using WebApp.Core.DomainEntities;
 using WebApp.Core.DomainEntities.Accounting;
 using WebApp.Enums;
@@ -29,8 +30,8 @@ public class BalanceSheetAppService(IAppRepository<Account, int> accountRepo,
                                     IAppRepository<ImportedBalanceSheet, int> importedBsRepo,
                                     IAppRepository<ImportedBalanceSheetDetail, int> importedBsDetailRepo,
                                     IAppRepository<Organization, Guid> orgRepo,
-                                    ILogger<BalanceSheetAppService> logger,
-                                    IUserManager userManager) : IBalanceSheetAppService
+                                    ILogger<BalanceSheetAppService> logger
+                                    ) : IBalanceSheetAppService
 {
     public async Task<AppResponse> CreateImportedBalanceSheet(Guid orgId, BalanceSheetParams input)
     {
@@ -140,7 +141,7 @@ public class BalanceSheetAppService(IAppRepository<Account, int> accountRepo,
         workbook.LoadFromStream(fileStream);
         var worksheet = workbook.Worksheets[0];
         //Try to find the cell that contain the "111" account number to start with:
-        var cell111 = worksheet.FindAll("111", FindType.Number, ExcelFindOptions.MatchEntireCellContent)
+        var cell111 = worksheet.FindAll("111", FindType.Text, ExcelFindOptions.MatchEntireCellContent)
                                .FirstOrDefault();
         var startRow = cell111?.Row ?? 3;
 
@@ -149,12 +150,12 @@ public class BalanceSheetAppService(IAppRepository<Account, int> accountRepo,
             var detail = new ImportedBalanceSheetDetail
             {
                 Account = worksheet.Range[i, 1].Value,
-                OpenCredit = ParseDecimal(worksheet.Range[i, 2].Value),
-                OpenDebit = ParseDecimal(worksheet.Range[i, 3].Value),
-                AriseCredit = ParseDecimal(worksheet.Range[i, 4].Value),
-                AriseDebit = ParseDecimal(worksheet.Range[i, 5].Value),
-                CloseCredit = ParseDecimal(worksheet.Range[i, 6].Value),
-                CloseDebit = ParseDecimal(worksheet.Range[i, 7].Value),
+                OpenCredit = ParseDecimal(worksheet.Range[i, 3].Value),
+                OpenDebit = ParseDecimal(worksheet.Range[i, 4].Value),
+                AriseCredit = ParseDecimal(worksheet.Range[i, 5].Value),
+                AriseDebit = ParseDecimal(worksheet.Range[i, 6].Value),
+                CloseCredit = ParseDecimal(worksheet.Range[i, 7].Value),
+                CloseDebit = ParseDecimal(worksheet.Range[i, 8].Value),
             };
             logger.LogInformation("{detail}", detail.ToString());
             balanceSheetDetails.Add(detail);

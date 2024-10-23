@@ -4,16 +4,20 @@ public class InvoiceDisplayDto
 {
     public string Id { get; set; } = string.Empty;
     public string SellerTaxCode { get; set; } = string.Empty;
+    public string? SellerAddress { get; set; }
     public string SellerName { get; set;} = string.Empty;
     public string BuyerTaxCode { get; set; } = string.Empty;
+    public string? BuyerAddress { get; set; }
     public string BuyerName { get; set; } = string.Empty;
     public string? InvoiceNumber { get; set; } //Số hóa đơn
     public string InvoiceNotation { get; set; } = string.Empty; //Ký hiệu hóa đơn
     public int? InvoiceGroupNotation { get; set; } //Ký hiệu mẫu số
+    public string? VerifyCode { get; set; }
     public List<Goods> GoodsDetail { get; set; } = []; //Hàng hóa
     public double? TotalPrice { get; set; }
     public double? Vat { get; set; }
     public double? TotalPriceVat { get; set; }
+    public string? TotalInWord { get; set; }
     public DateTime? CreationDate { get; set; } //Ngày lập
     public DateTime? SigningDate { get; set; } //Ngày ký
     public DateTime? IssueDate { get; set; } //Ngày cấp mã

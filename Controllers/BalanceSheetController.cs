@@ -51,4 +51,18 @@ public class BalanceSheetController(IBalanceSheetAppService service) : Controlle
         var result = await service.GetImportedBalanceSheets(id);
         return Ok(result);
     }
+
+    /// <summary>
+    /// Upload balance sheet file (excel .xlsx)
+    /// </summary>
+    /// <param name="orgId">Organization Id</param>
+    /// <param name="year">Year of the report</param>
+    /// <param name="file">Excel file template</param>
+    /// <returns></returns>
+    [HttpPost("upload/{orgId:guid}")]
+    public async Task<IActionResult> Upload(Guid orgId, [FromForm] int year, IFormFile file)
+    {
+        var res = await service.ProcessBalanceSheet(orgId, year, file);
+        return Ok(res);
+    }
 }

@@ -84,6 +84,17 @@ public class AppResponse
             Data = details
         };
     }
+    
+    public static AppResponse Error404(string message, params string[] details)
+    {
+        return new AppResponse
+        {
+            Code = "404",
+            Success = false,
+            Message = message,
+            Data = details
+        };
+    }
 
     public static AppResponse Error500(string message, params string[] details)
     {

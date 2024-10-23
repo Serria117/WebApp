@@ -129,8 +129,8 @@ public class OrganizationAppService(IAppRepository<Organization, Guid> orgRepo,
         var pagedResult = (await orgRepo.Find(o => !o.Deleted
                                                    && (string.IsNullOrEmpty(keyword) ||
                                                        o.UnsignName.Contains(keyword) ||
-                                                       o.ShortName == null ||
-                                                       o.ShortName.Contains(keyword) ||
+                                                       (o.ShortName != null &&
+                                                       o.ShortName.Contains(keyword)) ||
                                                        o.TaxId.Contains(keyword)),
                                               sortBy: page.SortBy, order: page.OrderBy,
                                               include:

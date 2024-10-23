@@ -55,6 +55,8 @@ public interface IInvoiceAppService
     /// <param name="to">End date</param>
     /// <returns>The result of checking process.</returns>
     Task<AppResponse> RecheckInvoiceStatus(string token, string from, string to);
+
+    Task<AppResponse> FindOne(string taxCode, string id);
 }
 
 public class InvoiceAppService(IInvoiceMongoRepository mongoInvoice,
@@ -275,6 +277,14 @@ public class InvoiceAppService(IInvoiceMongoRepository mongoInvoice,
             logger.LogError("Failed with Error: {mess}", e.Message);
             return AppResponse.Error500("Warning: saving invoices to database unsuccessfully due to an error occured.");
         }
+    }
+
+    public async Task<AppResponse> FindOne(string taxCode, string id)
+    {
+        var found = await mongoInvoice.FindOneAsync(x => x.Id == id && x.Nmmst == taxCode);
+        return found != null 
+            ? AppResponse.SuccessResponse(found.ToDisplayModel()) 
+            : AppResponse.Error404("No invoice was found.");
     }
 
     private static byte[] GenerateExcelFile(List<InvoiceDisplayDto> invoiceList, string from, string to)
