@@ -32,18 +32,21 @@ var origins = config.GetSection("AllowedOrigins").Get<string[]>() ?? [];
 Log.Logger = new LoggerConfiguration()
              .WriteTo.Console()
              .WriteTo.File(
-                 path: "logs/log-.txt",        // Log file path with rolling logs
-                 rollingInterval: RollingInterval.Day,  // Roll log files daily
-                 outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}",
+                 path: "logs/log-.txt", // Log file path with rolling logs
+                 rollingInterval: RollingInterval.Day, // Roll log files daily
+                 outputTemplate:
+                 "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}",
                  restrictedToMinimumLevel: Serilog.Events.LogEventLevel.Information // Minimum level to log
              )
              .CreateLogger();
 
 // Add services to the container.
+services.AddSingleton<AuditableEntityInterceptor>();
 services.AddDbContext<AppDbContext>((serviceProvider, options) =>
 {
-    options.UseSqlServer(connectionString: config.GetConnectionString("SqlServer"));
-    // options.AddInterceptors(serviceProvider.GetRequiredService<AuditableEntityInterceptor>());
+    var auditInterceptor = serviceProvider.GetService<AuditableEntityInterceptor>()!;
+    options.UseSqlServer(connectionString: config.GetConnectionString("SqlServer"))
+           .AddInterceptors(auditInterceptor);
 });
 
 builder.Services.AddControllers()
