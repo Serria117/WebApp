@@ -45,9 +45,9 @@ public class InvoiceController(IRestAppService restService,
     /// <param name="parameters"></param>
     /// <returns></returns>
     [HttpGet("find/{taxId}")]
-    public async Task<IActionResult> FindInvoice(string taxId, [FromQuery] InvoiceParams parameters)
+    public async Task<IActionResult> FindInvoice(string taxId, [FromQuery] InvoiceRequestParam parameters)
     {
-        var result = await invService.GetInvoices(taxId, parameters.Valid());
+        var result = await invService.FindPurchaseInvoices(taxId, parameters.Valid());
         return Ok(result);
     }
 
@@ -83,7 +83,7 @@ public class InvoiceController(IRestAppService restService,
     [HttpPost("sync")]
     public async Task<IActionResult> SyncInvoice(SyncInvoiceRequest request)
     {
-        var res = await invService.SyncInvoices(request.Token, request.From, request.To);
+        var res = await invService.ExtractPurchaseInvoices(request.Token, request.From, request.To);
         return Ok(res);
     }
 
@@ -111,9 +111,9 @@ public class InvoiceController(IRestAppService restService,
     [HttpPost("recheck")]
     public async Task<IActionResult> RecheckInvoice(SyncInvoiceRequest request)
     {
-        var result = await invService.RecheckInvoiceStatus(request.Token, request.From, request.To);
-        return result.Code == "207" 
-            ? StatusCode(StatusCodes.Status207MultiStatus, result) 
+        var result = await invService.RecheckPurchaseInvoice(request.Token, request.From, request.To);
+        return result.Code == "207"
+            ? StatusCode(StatusCodes.Status207MultiStatus, result)
             : Ok(result);
     }
 
@@ -128,5 +128,31 @@ public class InvoiceController(IRestAppService restService,
     {
         var result = await invService.FindOne(taxId, id);
         return result.Code == "200" ? Ok(result) : NotFound(result);
+    }
+
+    /// <summary>
+    /// Retrieve sold invoices from hoadondientu service
+    /// </summary>
+    /// <param name="request">Request parameters</param>
+    /// <returns>Number of successfully added invoice (duplicate value will be ignored)</returns>
+    [HttpPost("sold-invoice/sync")]
+    public async Task<IActionResult> RetrieveSoldInvoice(SyncInvoiceRequest request)
+    {
+        var result = await invService.ExtractSoldInvoice(request);
+        return Ok(result);
+    }
+
+    /// <summary>
+    /// Find sold invoice in the database
+    /// </summary>
+    /// <param name="taxId">Organization taxid</param>
+    /// <param name="parameters">Query parameters</param>
+    /// <returns>List of sold invoice</returns>
+    [HttpGet("sold/get-all/{taxId}")]
+    public async Task<IActionResult> FindSoldInvoices(string taxId, 
+                                                      [FromQuery] InvoiceRequestParam parameters)
+    {
+        var result = await invService.FindSoldInvoices(taxId, parameters);
+        return Ok(result);
     }
 }

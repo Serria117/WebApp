@@ -58,13 +58,13 @@ public static class InvoiceExtension
                 PreTaxPrice = g.Thtien,
                 Rate = g.Tsuat,
                 Discount = g.Stckhau,
-                Tax = g.Thtien is null || g.Tsuat is null  
-                    ? 0 
+                Tax = g.Thtien is null || g.Tsuat is null
+                    ? 0
                     : Math.Round(g.Thtien.Value * g.Tsuat.Value, 0)
             }).ToList(),
         };
     }
-    
+
     public static InvoiceDisplayDto ToDisplayModel(this InvoiceDetailModel doc)
     {
         return new InvoiceDisplayDto
@@ -115,7 +115,7 @@ public static class InvoiceExtension
             }).ToList(),
         };
     }
-    
+
     public static InvoiceDisplayDto ToDisplayModel(this InvoiceModel inv)
     {
         return new InvoiceDisplayDto
@@ -157,7 +157,50 @@ public static class InvoiceExtension
             SellerAddress = inv.Nbdchi,
             TotalInWord = inv.Tgtttbchu,
             VerifyCode = inv.Mhdon
-            
+        };
+    }
+
+    public static InvoiceDisplayDto ToDisplayModel(this SoldInvoiceDoc doc)
+    {
+        return new InvoiceDisplayDto()
+        {
+            Id = doc.Id ?? string.Empty,
+            VerifyCode = doc.Mhdon,
+            StatusNumber = doc.Tthai,
+            BuyerName = doc.Nmten ?? string.Empty,
+            BuyerTaxCode = doc.Nmmst ?? string.Empty,
+            BuyerAddress = doc.Nmdchi,
+            SellerName = doc.Nbten ?? string.Empty,
+            SellerTaxCode = doc.Nbmst ?? string.Empty,
+            SellerAddress = doc.Nbdchi,
+            InvoiceNotation = doc.Khhdon ?? string.Empty,
+            InvoiceGroupNotation = doc.Khmshdon,
+            InvoiceNumber = doc.Shdon.ToString(),
+            TotalPrice = doc.Tgtcthue,
+            Vat = doc.Tgtthue,
+            TotalPriceVat = doc.Tgtttbso,
+            TotalInWord = doc.Tgtttbchu,
+            CreationDate = doc.Tdlap?.ToLocalTime(),
+            SigningDate = doc.Nky?.ToLocalTime(),
+            IssueDate = doc.Ncma?.ToLocalTime(),
+            Status = doc.Tthai switch
+            {
+                1 => "Hóa đơn mới",
+                2 => "Hóa đơn thay thế",
+                3 => "Hóa đơn bị thay thế",
+                4 => "Hóa đơn điều chỉnh",
+                5 => "Hóa đơn bị điều chỉnh",
+                6 => "Hóa đơn hủy",
+                _ => string.Empty
+            },
+            InvoiceType = doc.Ttxly switch
+            {
+                5 => "Hóa đơn cấp mã",
+                6 => "Hóa đơn không cấp mã",
+                8 => "Hóa đơn từ máy tính tiền",
+                _ => string.Empty
+            },
+            InvoiceTypeNumber = doc.Ttxly,
         };
     }
 }

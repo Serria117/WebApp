@@ -11,6 +11,7 @@ using WebApp.Repositories;
 using WebApp.Services.BalanceSheetService.Dto;
 using WebApp.Services.Mappers;
 using WebApp.Services.UserService;
+using Z.EntityFramework.Plus;
 
 namespace WebApp.Services.BalanceSheetService;
 
@@ -20,18 +21,20 @@ public interface IBalanceSheetAppService
     Task<AppResponse> CreateImportedBalanceSheet(Guid orgId, BalanceSheetParams input);
     Task<AppResponse> GetImportedBalanceSheetsByOrg(Guid orgId);
     Task<AppResponse> GetImportedBalanceSheets(int id);
-    Task DeleteImportedBalanceSheet(int id);
+    Task<AppResponse> DeleteImportedBalanceSheet(int id);
     Task<AppResponse> HardDeleteImportedBalanceSheet(int id);
 }
 
-public class BalanceSheetAppService(IAppRepository<Account, int> accountRepo,
+public class BalanceSheetAppService(AppDbContext db,
+                                    IUnitOfWork unit,
+                                    IAppRepository<Account, int> accountRepo,
                                     IAppRepository<BalanceSheet, int> balanceSheetRepo,
                                     IAppRepository<BalanceSheetDetail, int> balanceSheetDetailRepo,
                                     IAppRepository<ImportedBalanceSheet, int> importedBsRepo,
                                     IAppRepository<ImportedBalanceSheetDetail, int> importedBsDetailRepo,
                                     IAppRepository<Organization, Guid> orgRepo,
                                     ILogger<BalanceSheetAppService> logger
-                                    ) : IBalanceSheetAppService
+) : IBalanceSheetAppService
 {
     public async Task<AppResponse> CreateImportedBalanceSheet(Guid orgId, BalanceSheetParams input)
     {
@@ -39,9 +42,9 @@ public class BalanceSheetAppService(IAppRepository<Account, int> accountRepo,
         var balanceSheet = new ImportedBalanceSheet
         {
             Organization = orgRepo.Attach(orgId),
+            Year = input.Year,
             Details = input.Details.MapCollection(x => x.ToEntity()).ToHashSet(),
         };
-
         CalculateBalanceSheetTotal(balanceSheet);
 
         var savedBs = await importedBsRepo.CreateAsync(balanceSheet);
@@ -76,17 +79,23 @@ public class BalanceSheetAppService(IAppRepository<Account, int> accountRepo,
         var result = await importedBsRepo
                            .Find(x => x.Id == id && !x.Deleted, include: [nameof(ImportedBalanceSheet.Details)])
                            .FirstOrDefaultAsync();
-        
-        if(result is null) return AppResponse.Error(ResponseMessage.NotFound);
-        
+
+        if (result is null) return AppResponse.Error(ResponseMessage.NotFound);
+
         return AppResponse.SuccessResponse(result.ToDisplayDto());
     }
 
-    public async Task DeleteImportedBalanceSheet(int id)
+    public async Task<AppResponse> DeleteImportedBalanceSheet(int id)
     {
+        await unit.BeginTransactionAsync();
+        var detailIds = await importedBsDetailRepo.Find(x => x.ImportedBalanceSheet.Id == id)
+                                                  .Select(x => x.Id)
+                                                  .ToArrayAsync();
         await importedBsRepo.SoftDeleteAsync(id);
-        await importedBsDetailRepo.Find(x => x.ImportedBalanceSheet.Id == id)
-                                  .ExecuteUpdateAsync(x => x.SetProperty(b => b.Deleted, true));
+        await importedBsDetailRepo.SoftDeleteManyAsync(detailIds);
+        await unit.CommitAsync();
+        return AppResponse.Ok();
+        
     }
 
     public async Task<AppResponse> ProcessBalanceSheet(Guid orgId, int year, IFormFile file)
@@ -112,10 +121,20 @@ public class BalanceSheetAppService(IAppRepository<Account, int> accountRepo,
 
     public async Task<AppResponse> HardDeleteImportedBalanceSheet(int id)
     {
-        var result = await importedBsRepo.HardDeleteAsync(id);
-        return result ? AppResponse.Ok() : AppResponse.Error(ResponseMessage.NotFound);
+        await db.ExecuteInTransaction(async () =>
+        {
+            await db.ImportedBalanceSheets
+                    .Where(x => x.Id == id)
+                    .ExecuteDeleteAsync();
+            await db.ImportedBalanceSheetDetails
+                    .Where(x => x.ImportedBalanceSheet.Id == id)
+                    .ExecuteDeleteAsync();
+        });
+
+        return AppResponse.Ok();
     }
 
+    #region PRIVATE METHODS
     private static void CalculateBalanceSheetTotal(ImportedBalanceSheet bs)
     {
         foreach (var b in bs.Details.Where(b => b.Account?.ToString().Length == 3))
@@ -198,4 +217,5 @@ public class BalanceSheetAppService(IAppRepository<Account, int> accountRepo,
     {
         return string.IsNullOrEmpty(text) ? 0 : decimal.Parse(text);
     }
+    #endregion
 }

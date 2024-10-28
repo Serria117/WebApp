@@ -54,21 +54,6 @@ public class AppRepository<T, TK> : IAppRepository<T, TK> where T : BaseEntity<T
         return _dbSet.Attach(new T {Id = id}).Entity;
     }
 
-    public async Task<List<T>> FindAllAsync(int skip, int take, string? sortProperty, string? include = null)
-    {
-        sortProperty ??= "Id ASC";
-        var query = _dbSet.Where(t => !t.Deleted);
-        if (include != null)
-        {
-            query = query.Include(include);
-        }
-
-        return await query.OrderBy(sortProperty)
-                          .Skip(skip)
-                          .Take(take)
-                          .ToListAsync();
-    }
-    
     public async Task<T> CreateAsync(T entity)
     {
         var saved = (await _dbSet.AddAsync(entity)).Entity;
@@ -81,7 +66,8 @@ public class AppRepository<T, TK> : IAppRepository<T, TK> where T : BaseEntity<T
         var query = _dbSet.Where(condition);
         if (!include.IsNullOrEmpty())
         {
-            query = include.Aggregate(query, (current, prop) => current.Include(prop));
+            query = include.Aggregate(query, (current, prop) => current.Include(prop))
+                           .AsSplitQuery();
         }
 
         return query.OrderBy("Id DESC");
@@ -157,8 +143,8 @@ public class AppRepository<T, TK> : IAppRepository<T, TK> where T : BaseEntity<T
 
     public async Task<bool> SoftDeleteManyAsync(params TK[] ids)
     {
-        var result = await Find(t => ids.Contains(t.Id) && !t.Deleted)
-            .ExecuteUpdateAsync(x => x.SetProperty(p => p.Deleted, true));
+        var result = await _dbSet.Where(x => ids.Contains(x.Id))
+                                 .ExecuteUpdateAsync(x => x.SetProperty(p => p.Deleted, true));
         return result > 0;
     }
 
@@ -166,7 +152,8 @@ public class AppRepository<T, TK> : IAppRepository<T, TK> where T : BaseEntity<T
     {
         var entity = await _dbSet.FindAsync(id);
         if (entity == null) return false;
-        var res = await _dbSet.DeleteByKeyAsync(entity);
-        return res > 0;
+        _dbSet.Remove(entity);
+        await _db.SaveChangesAsync();
+        return true;
     }
 }

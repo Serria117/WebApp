@@ -4,6 +4,7 @@ using WebApp.Mongo.MongoRepositories;
 using WebApp.Repositories;
 using WebApp.Services.BalanceSheetService;
 using WebApp.Services.InvoiceService;
+using WebApp.Services.NotificationService;
 using WebApp.Services.OrganizationService;
 using WebApp.Services.RegionService;
 using WebApp.Services.RestService;
@@ -23,14 +24,21 @@ public static class DependencyRegister
                                                                .GetDatabase(settings.DatabaseName));
         s.AddScoped<IInvoiceMongoRepository, InvoiceMongoRepository>();
         s.AddScoped<IUserMongoRepository, UserMongoRepository>();
+        s.AddScoped<ISoldInvoiceMongoRepository, SoldInvoiceMongoRepository>();
     }
 
     public static void AddAppServices(this IServiceCollection s)
     {
+        //Add notification service here:
+        s.AddSingleton<INotificationAppService, NotificationAppService>();
+        
+        //Add repositories services here:
         s.AddScoped(typeof(IAppRepository<,>), typeof(AppRepository<,>));
         s.AddScoped<IRestAppService, RestAppService>();
         s.AddScoped<IUserManager, UserManager>();
+        s.AddScoped<IUnitOfWork, UnitOfWork>();
         
+        //Add business services here:
         s.AddTransient<IUserAppService, UserAppAppService>();
         s.AddTransient<IRoleAppService, RoleAppService>();
         s.AddTransient<IPermissionAppService, PermissionAppService>();

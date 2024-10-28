@@ -1,8 +1,13 @@
-﻿namespace WebApp.Payloads;
+﻿using WebApp.Enums;
 
-public class InvoiceParams
+namespace WebApp.Payloads;
+
+/// <summary>
+/// Wraper for query invoice from mongodb
+/// </summary>
+public class InvoiceRequestParam
 {
-    public string? SellerKeyword { get; set; }
+    public string? NameKeyword { get; set; }
     public int? InvoiceNumber { get; set; }
     public string? From { get; set; }
     public string? To { get; set; }
@@ -15,7 +20,7 @@ public class InvoiceParams
     
     public bool? Risk { get; set; }
     
-    public InvoiceParams Valid()
+    public InvoiceRequestParam Valid()
     {
         if (Size is <= 0 or > 1000 or null)
         {
@@ -30,20 +35,3 @@ public class InvoiceParams
     }
 }
 
-public enum InvoiceType
-{
-    InvoiceWithCode = 5,
-    InvoiceWithoutCode = 6,
-    InvoiceFromPos = 8
-}
-
-public enum InvoiceStatus
-{
-    New = 1,
-    Replacement = 2,
-    Replaced = 3,
-    Modifying = 4,
-    Modified = 5,
-    Terminated = 6,
-    
-}

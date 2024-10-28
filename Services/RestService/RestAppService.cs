@@ -9,6 +9,7 @@ using WebApp.Mongo.DeserializedModel;
 using WebApp.Payloads;
 using WebApp.Services.InvoiceService.dto;
 using WebApp.Services.RestService.Dto;
+using WebApp.Services.RestService.Dto.SoldInvoice;
 using WebApp.SignalrConfig;
 using WebApp.Utils;
 
@@ -18,7 +19,7 @@ public interface IRestAppService
 {
     Task<AppResponse> Authenticate(InvoiceLoginModel login);
     Task<CaptchaModel?> GetCaptcha();
-    Task<AppResponse> GetInvoiceListAsync(string token, string from, string to);
+    Task<AppResponse> GetPurchaseInvoiceListInRange(string token, string from, string to);
     /// <summary>
     /// Attempt to get an invoice's detail of goods sold
     /// </summary>
@@ -26,6 +27,8 @@ public interface IRestAppService
     /// <param name="invoice">The invoice object to get detail</param>
     /// <returns>A response object containing the result of the request</returns>
     Task<AppResponse> GetInvoiceDetail(string token, InvoiceDisplayDto invoice);
+
+    Task<AppResponse> GetSoldInvoiceListAsync(string token, string from, string to);
 }
 
 public class RestAppService(IRestClient restClient,
@@ -33,6 +36,7 @@ public class RestAppService(IRestClient restClient,
                             ILogger<RestAppService> logger,
                             IHubContext<AppHub> hubContext) : IRestAppService
 {
+    #region Authentication
     public async Task<CaptchaModel?> GetCaptcha()
     {
         var request = new RestRequest("/captcha", Method.Get);
@@ -70,8 +74,84 @@ public class RestAppService(IRestClient restClient,
             Message = $"Error: {response.StatusCode}"
         };
     }
+    
+    #endregion
 
-    public async Task<AppResponse> GetInvoiceListAsync(string token, string from, string to)
+    #region SOLD INVOICE METHODS
+
+    public async Task<AppResponse> GetSoldInvoiceListAsync(string token, string from, string to)
+    {
+
+        List<SoldInvoiceModel> invoicesList = [];
+        
+        var fromValue = DateTime.ParseExact(from, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None);
+        var toValue = DateTime.ParseExact(to, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None);
+
+        if (fromValue > toValue) throw new InvalidDataException("[From date] can not be greater than [To date]");
+
+        var dateRanges = CommonUtil.SplitDateRange(fromValue, toValue);
+
+        foreach (var dateRange in dateRanges)
+        {
+            var pageCount = 1;
+            await Task.Delay(800);
+            var result = await GetSoldInvoiceFromService(token, dateRange.GetFromDateString(), dateRange.GetToDateString());
+            if (result == null) continue;
+            invoicesList.AddRange(result.Datas);
+            if (result.State == null) continue;
+            var nextState = result.State;
+            while (true)
+            {
+                pageCount++;
+                var nextResult = await GetSoldInvoiceFromService(token,
+                                                                     dateRange.GetFromDateString(),
+                                                                     dateRange.GetToDateString(),
+                                                                     nextState);
+                if (nextResult == null) break;
+                invoicesList.AddRange(nextResult.Datas);
+                if (nextResult.State == null) break;
+                nextState = nextResult.State;
+            }
+        }
+
+        return AppResponse.SuccessResponse(invoicesList);
+    }
+    
+    private async Task<SoldInvoiceResponseModel?> GetSoldInvoiceFromService(string token,
+                                                                     string from, string to,
+                                                                     string? state = null)
+    {
+        var request = new RestRequest("/query/invoices/sold", Method.Get);
+        request.AddHeader("Cookie", setting.Cookie);
+        request.AddHeader("Authorization", $"Bearer {token}");
+        request.AddQueryParameter("sort", "tdlap:desc,khmshdon:asc,shdon:desc");
+        request.AddQueryParameter("size", 50);
+        request.AddQueryParameter("search", $"tdlap=ge={from}T00:00:00;tdlap=le={to}T23:59:59");
+
+        if (state is not null)
+        {
+            request.AddQueryParameter("state", state);
+        }
+        var response = await restClient.ExecuteAsync<SoldInvoiceResponseModel>(request);
+        if (response.IsSuccessful)
+        {
+            Console.WriteLine($"Successfully retrieved  invoice from {from} to {to}");
+            return response.Data;
+
+        }
+        var json = response.Content;
+        var data = JsonConvert.DeserializeObject<SoldInvoiceResponseModel>(json!);
+        Console.WriteLine(response.ErrorMessage);
+        return data;
+    }
+    
+    
+
+    #endregion
+
+    #region PURCHASE INVOICE METHODS
+
+    public async Task<AppResponse> GetPurchaseInvoiceListInRange(string token, string from, string to)
     {
         try
         {
@@ -96,7 +176,7 @@ public class RestAppService(IRestClient restClient,
                 {
                     var pageCount = 1;
                     await Task.Delay(800);
-                    var result = await GetInvoiceDetail(token, enpoint,
+                    var result = await GetPurchaseInvoiceFromService(token, enpoint,
                                                         dateRange.GetFromDateString(),
                                                         dateRange.GetToDateString(), type);
                     await hubContext.Clients.All.SendAsync("RetrieveList",
@@ -110,7 +190,7 @@ public class RestAppService(IRestClient restClient,
                     while (true)
                     {
                         pageCount++;
-                        var nextResult = await GetInvoiceDetail(token, enpoint,
+                        var nextResult = await GetPurchaseInvoiceFromService(token, enpoint,
                                                                 dateRange.GetFromDateString(),
                                                                 dateRange.GetToDateString(),
                                                                 type, nextState);
@@ -136,7 +216,18 @@ public class RestAppService(IRestClient restClient,
         }
     }
 
-    private async Task<InvoiceResponseModel?> GetInvoiceDetail(string token, string endpoint,
+    /// <summary>
+    /// Get the list of purchase invoice in date range that limited by the external service. The invoices in the list has no goods detail
+    /// </summary>
+    /// <param name="token"></param>
+    /// <param name="endpoint"></param>
+    /// <param name="from"></param>
+    /// <param name="to"></param>
+    /// <param name="type"></param>
+    /// <param name="state"></param>
+    /// <returns></returns>
+    /// <exception cref="Exception"></exception>
+    private async Task<InvoiceResponseModel?> GetPurchaseInvoiceFromService(string token, string endpoint,
                                                                string from, string to,
                                                                int type, string? state = null)
     {
@@ -235,4 +326,5 @@ public class RestAppService(IRestClient restClient,
         //Console.WriteLine($"{response.Content} successfully retrieved");
         return AppResponse.SuccessResponse(response.Data!);
     }
+    #endregion
 }

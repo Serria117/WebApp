@@ -10,7 +10,9 @@ namespace WebApp.Services;
 
 public class AppServiceBase(IUserManager userManager)
 {
-    protected IUserManager UserManager { get; set; } = userManager;
-
-    
+    protected IUserManager UserManager { get; } = userManager;
+    /// <summary>
+    /// Get the current user's id
+    /// </summary>
+    protected string? UserId { get; } = userManager.CurrentUserId();
 }
