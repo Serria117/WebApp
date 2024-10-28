@@ -241,7 +241,7 @@ public class InvoiceAppService(IInvoiceMongoRepository mongoPurchaseInvoice,
                                                 "Some invoices could not be synced right now because the external server has hit rate limit.");
                 await hub.Clients.All.SendAsync("RetrieveList", "Attempting to write the current retrieved invoices.");*/
 
-                await notificationService.SendNotificationAsync(UserManager.CurrentUserId()!,
+                await notificationService.SendNotificationAsync(UserId,
                                                                 HubName.PurchaseInvoice,
                                                                 "Some invoices could not be synced right now because the external server has hit rate limit.");
                 return await WriteInvoices(invoicesToSave, unDeserializedInvoices, newInvoices.Count);
@@ -268,7 +268,7 @@ public class InvoiceAppService(IInvoiceMongoRepository mongoPurchaseInvoice,
                 var completed = decimal.Divide(countAdd, newInvoices.Count) * 100;
                 /*await hub.Clients.All.SendAsync("RetrieveList",
                                                 $"Download: {countAdd}/{newInvoices.Count} - {completed:F2}% completed");*/
-                await notificationService.SendNotificationAsync(UserManager.CurrentUserId()!,
+                await notificationService.SendNotificationAsync(UserId,
                                                                 HubName.PurchaseInvoice,
                                                                 $"Download: {countAdd}/{newInvoices.Count} - {completed:F2}% completed");
             }
@@ -277,7 +277,7 @@ public class InvoiceAppService(IInvoiceMongoRepository mongoPurchaseInvoice,
             {
                 unDeserializedInvoices.Add((string)invDetail.Data);
                 var completed = decimal.Divide(countAdd, newInvoices.Count) * 100;
-                await notificationService.SendNotificationAsync(UserManager.CurrentUserId()!,
+                await notificationService.SendNotificationAsync(UserId,
                                                                 HubName.PurchaseInvoice,
                                                                 $"Download: {countAdd}/{newInvoices.Count} - {completed:F2}% completed");
             }
@@ -314,12 +314,12 @@ public class InvoiceAppService(IInvoiceMongoRepository mongoPurchaseInvoice,
         var soldList = soldResult.Data.Select(inv => inv.ToDisplayModel())
                                  .ToList();
         logger.LogInformation("Number of sold found: {}", soldList.Count);
-        await notificationService.SendNotificationAsync(UserManager.CurrentUserId()!,
+        await notificationService.SendNotificationAsync(UserId,
                                                         HubName.InvoiceCount,
                                                         $"Đang kết xuất dữ liệu của {purchaseList.Count} hóa đơn đầu vào và {soldList.Count} hóa đơn đầu ra.");
 
         var file = GenerateExcelFile(purchaseList, soldList, from, to);
-        await notificationService.SendNotificationAsync(UserManager.CurrentUserId()!,
+        await notificationService.SendNotificationAsync(UserId,
                                                         HubName.InvoiceCount,
                                                         "Finished.");
         return file;

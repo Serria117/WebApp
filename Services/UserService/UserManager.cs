@@ -6,7 +6,7 @@ namespace WebApp.Services.UserService;
 public interface IUserManager
 {
     string? CurrentUsername();
-    string? CurrentUserId();
+    string CurrentUserId();
 }
 
 public class UserManager(IHttpContextAccessor httpContextAccessor) : IUserManager
@@ -18,7 +18,7 @@ public class UserManager(IHttpContextAccessor httpContextAccessor) : IUserManage
         return _httpContext?.User.Identity?.Name;
     }
 
-    public string? CurrentUserId()
+    public string CurrentUserId()
     {
         const string claimType = "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier";
         return _httpContext?.User.Claims.FirstOrDefault(x => x.Type == claimType)?.Value;

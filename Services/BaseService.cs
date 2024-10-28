@@ -14,5 +14,5 @@ public class AppServiceBase(IUserManager userManager)
     /// <summary>
     /// Get the current user's id
     /// </summary>
-    protected string? UserId { get; } = userManager.CurrentUserId();
+    protected string UserId { get; } = userManager.CurrentUserId();
 }
