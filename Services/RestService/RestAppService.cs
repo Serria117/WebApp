@@ -5,6 +5,7 @@ using MongoDB.Driver;
 using Newtonsoft.Json;
 using RestSharp;
 using WebApp.Authentication;
+using WebApp.Enums;
 using WebApp.Mongo.DeserializedModel;
 using WebApp.Payloads;
 using WebApp.Services.InvoiceService.dto;
@@ -167,20 +168,27 @@ public class RestAppService(IRestClient restClient,
 
             foreach (var type in types)
             {
-                var enpoint = type switch
+                var endpoint = type switch
                 {
                     8 => "/sco-query/invoices/purchase",
                     _ => "/query/invoices/purchase"
+                };
+                var displayType = type switch
+                {
+                    5 => "Hóa đơn được cấp mã",
+                    6 => "Hóa đơn không cấp mã",
+                    8 => "Hóa đơn từ máy tính tính tiền",
+                    _ => string.Empty
                 };
                 foreach (var dateRange in dateRanges)
                 {
                     var pageCount = 1;
                     await Task.Delay(800);
-                    var result = await GetPurchaseInvoiceFromService(token, enpoint,
+                    var result = await GetPurchaseInvoiceFromService(token, endpoint,
                                                         dateRange.GetFromDateString(),
                                                         dateRange.GetToDateString(), type);
-                    await hubContext.Clients.All.SendAsync("RetrieveList",
-                                                           $"Get invoice type {type} of page {pageCount} - from {dateRange.GetFromDateString()} to {dateRange.GetToDateString()}");
+                    await hubContext.Clients.All.SendAsync(HubName.PurchaseInvoice,
+                                                           $"Tải thông tin {displayType} - Từ ngày: {dateRange.GetFromDateString()} đến ngày {dateRange.GetToDateString()}\n Trang: {pageCount}");
                     Console.WriteLine(
                         $"Get invoice type {type} of page {pageCount} - from {dateRange.GetFromDateString()} to {dateRange.GetToDateString()}");
                     if (result == null) continue;
@@ -190,12 +198,12 @@ public class RestAppService(IRestClient restClient,
                     while (true)
                     {
                         pageCount++;
-                        var nextResult = await GetPurchaseInvoiceFromService(token, enpoint,
+                        var nextResult = await GetPurchaseInvoiceFromService(token, endpoint,
                                                                 dateRange.GetFromDateString(),
                                                                 dateRange.GetToDateString(),
                                                                 type, nextState);
-                        await hubContext.Clients.All.SendAsync("RetrieveList",
-                                                               $"Get invoice type {type} of page {pageCount} - from {dateRange.GetFromDateString()} to {dateRange.GetToDateString()}");
+                        await hubContext.Clients.All.SendAsync(HubName.PurchaseInvoice,
+                                                               $"Tải thông tin {displayType} - Từ ngày: {dateRange.GetFromDateString()} đến ngày {dateRange.GetToDateString()}\n Trang: {pageCount}");
                         Console.WriteLine(
                             $"Get invoice type {type} of page {pageCount} - from {dateRange.GetFromDateString()} to {dateRange.GetToDateString()}");
                         if (nextResult == null) break;
