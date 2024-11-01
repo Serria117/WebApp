@@ -98,7 +98,13 @@ services.AddAuthorization();
 services.AddSingleton<IAuthorizationHandler, PermissionAuthorizationHandler>();
 services.AddSingleton<IAuthorizationPolicyProvider, PermissionAuthorizationPolicyProvider>();
 
-services.AddSignalR();
+services.AddSignalR(op =>
+{
+    op.EnableDetailedErrors = true;
+    op.HandshakeTimeout = TimeSpan.FromSeconds(10);
+    op.ClientTimeoutInterval = TimeSpan.FromSeconds(60);
+    op.KeepAliveInterval = TimeSpan.FromSeconds(15);
+});
 
 services.AddEndpointsApiExplorer();
 
