@@ -35,8 +35,8 @@ public static class InvoiceExtension
             {
                 1 => "Hóa đơn mới",
                 2 => "Hóa đơn thay thế",
-                3 => "Hóa đơn bị thay thế",
-                4 => "Hóa đơn điều chỉnh",
+                3 => "Hóa đơn điều chỉnh",
+                4 => "Hóa đơn bị thay thế",
                 5 => "Hóa đơn bị điều chỉnh",
                 6 => "Hóa đơn hủy",
                 _ => string.Empty
@@ -88,8 +88,8 @@ public static class InvoiceExtension
             {
                 1 => "Hóa đơn mới",
                 2 => "Hóa đơn thay thế",
-                3 => "Hóa đơn bị thay thế",
-                4 => "Hóa đơn điều chỉnh",
+                3 => "Hóa đơn điều chỉnh",
+                4 => "Hóa đơn bị thay thế",
                 5 => "Hóa đơn bị điều chỉnh",
                 6 => "Hóa đơn hủy",
                 _ => string.Empty
@@ -139,8 +139,8 @@ public static class InvoiceExtension
             {
                 1 => "Hóa đơn mới",
                 2 => "Hóa đơn thay thế",
-                3 => "Hóa đơn bị thay thế",
-                4 => "Hóa đơn điều chỉnh",
+                3 => "Hóa đơn điều chỉnh",
+                4 => "Hóa đơn bị thay thế",
                 5 => "Hóa đơn bị điều chỉnh",
                 6 => "Hóa đơn hủy",
                 _ => string.Empty
@@ -187,8 +187,8 @@ public static class InvoiceExtension
             {
                 1 => "Hóa đơn mới",
                 2 => "Hóa đơn thay thế",
-                3 => "Hóa đơn bị thay thế",
-                4 => "Hóa đơn điều chỉnh",
+                3 => "Hóa đơn điều chỉnh",
+                4 => "Hóa đơn bị thay thế",
                 5 => "Hóa đơn bị điều chỉnh",
                 6 => "Hóa đơn hủy",
                 _ => string.Empty
