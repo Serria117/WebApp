@@ -3,6 +3,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.SignalR;
 using Newtonsoft.Json;
 using Spire.Xls;
+using WebApp.Core.DomainEntities.Accounting;
 using WebApp.Enums;
 using WebApp.Mongo.DeserializedModel;
 using WebApp.Mongo.DocumentModel;
@@ -10,6 +11,7 @@ using WebApp.Mongo.FilterBuilder;
 using WebApp.Mongo.Mapper;
 using WebApp.Mongo.MongoRepositories;
 using WebApp.Payloads;
+using WebApp.Repositories;
 using WebApp.Services.InvoiceService.dto;
 using WebApp.Services.NotificationService;
 using WebApp.Services.RestService;
@@ -70,7 +72,7 @@ public class InvoiceAppService(IInvoiceMongoRepository mongoPurchaseInvoice,
                                IRestAppService restService,
                                ILogger<InvoiceAppService> logger,
                                IRiskCompanyAppService riskService,
-                               IHubContext<AppHub> hub,
+                               IAppRepository<SyncInvoiceHistory, long> historyRepository,
                                INotificationAppService notificationService,
                                IUserManager userManager) : AppServiceBase(userManager), IInvoiceAppService
 {
@@ -151,10 +153,9 @@ public class InvoiceAppService(IInvoiceMongoRepository mongoPurchaseInvoice,
         var invoiceList = await mongoPurchaseInvoice.FindInvoices(filter: filter,
                                                                   page: invoiceParams.Page!.Value,
                                                                   size: invoiceParams.Size!.Value);
-        await notificationService.SendNotificationAsync(UserId!,
-                                                        HubName.PurchaseInvoice,
-                                                        $"Found {invoiceList.Total} invoice(s)");
-        //await Task.Delay(1000);
+        await notificationService.SendAsync(UserId,
+                                            HubName.PurchaseInvoice,
+                                            $"Found {invoiceList.Total} invoice(s)");
         return new AppResponse
         {
             Data = invoiceList.Data.Select(inv => inv.ToDisplayModel()).ToList(),
@@ -169,10 +170,10 @@ public class InvoiceAppService(IInvoiceMongoRepository mongoPurchaseInvoice,
 
     public async Task<AppResponse> RecheckPurchaseInvoice(string token, string from, string to)
     {
-        var resultFromRest = await restService.GetPurchaseInvoiceListInRange(token, from, to);
+        var resultFromService = await restService.GetPurchaseInvoiceListInRange(token, from, to);
         var total = 0L;
         List<InvoiceDisplayDto> updateList = [];
-        if (resultFromRest is { Success: true, Data: List<InvoiceDisplayDto> invoiceList })
+        if (resultFromService is { Success: true, Data: List<InvoiceDisplayDto> invoiceList })
         {
             foreach (var inv in invoiceList)
             {
@@ -185,7 +186,7 @@ public class InvoiceAppService(IInvoiceMongoRepository mongoPurchaseInvoice,
 
         return new AppResponse
         {
-            Message = total > 0 ? $"{total:N0} invoices updated." : "Found no invoice need to be updated.",
+            Message = total > 0 ? $"{total:N0} hóa đơn đã được cập nhật trạng thái" : "Không có hóa đơn cần cập nhật trạng thái",
             Data = updateList,
         };
     }
@@ -203,10 +204,10 @@ public class InvoiceAppService(IInvoiceMongoRepository mongoPurchaseInvoice,
         }
 
         var invoiceList = (List<InvoiceDisplayDto>)result.Data;
-
-        if (invoiceList.Count == 0)
+        var totalFound = invoiceList.Count;
+        if (totalFound == 0)
         {
-            await notificationService.SendNotificationAsync(UserId, "RetrieveList", "No new invoices found");
+            await notificationService.SendAsync(UserId, HubName.PurchaseInvoice, $"Không có hóa đơn phát sinh từ {from} dến {to}!");
             return AppResponse.SuccessResponse("No new invoices found");
         }
 
@@ -237,13 +238,9 @@ public class InvoiceAppService(IInvoiceMongoRepository mongoPurchaseInvoice,
                 logger.LogWarning("Server has reach rate limit. Writing {retrieved}/{total} invoices to database",
                                   unDeserializedInvoices.Count + invoicesToSave.Count,
                                   invoiceList.Count);
-                /*await hub.Clients.All.SendAsync("RetrieveList",
-                                                "Some invoices could not be synced right now because the external server has hit rate limit.");
-                await hub.Clients.All.SendAsync("RetrieveList", "Attempting to write the current retrieved invoices.");*/
-
-                await notificationService.SendNotificationAsync(UserId,
-                                                                HubName.PurchaseInvoice,
-                                                                "Some invoices could not be synced right now because the external server has hit rate limit.");
+                await notificationService.SendAsync(UserId,
+                                                    HubName.PurchaseInvoice,
+                                                    "Some invoices could not be synced right now because the external server has hit rate limit.");
                 return await WriteInvoices(invoicesToSave, unDeserializedInvoices, newInvoices.Count);
             }
 
@@ -251,9 +248,9 @@ public class InvoiceAppService(IInvoiceMongoRepository mongoPurchaseInvoice,
             {
                 logger.LogWarning("Error: {message}", invDetail.Message);
                 logger.LogInformation("Skipping...\n {data}", invoice.InvoiceNumber);
-                await notificationService.SendNotificationAsync(UserId,
-                                                                HubName.PurchaseInvoice,
-                                                                $"Failed to save invoice {invoice.InvoiceNumber} of {invoice.SellerTaxCode}, created at: {invoice.CreationDate:dd/MM/yyyy}");
+                await notificationService.SendAsync(UserId,
+                                                    HubName.PurchaseInvoice,
+                                                    $"Failed to save invoice {invoice.InvoiceNumber} of {invoice.SellerTaxCode}, created at: {invoice.CreationDate:dd/MM/yyyy}");
                 continue;
             }
 
@@ -268,18 +265,18 @@ public class InvoiceAppService(IInvoiceMongoRepository mongoPurchaseInvoice,
                 var completed = decimal.Divide(countAdd, newInvoices.Count) * 100;
                 /*await hub.Clients.All.SendAsync("RetrieveList",
                                                 $"Download: {countAdd}/{newInvoices.Count} - {completed:F2}% completed");*/
-                await notificationService.SendNotificationAsync(UserId,
-                                                                HubName.PurchaseInvoice,
-                                                                $"Download: {countAdd}/{newInvoices.Count} - {completed:F2}% completed");
+                await notificationService.SendAsync(UserId,
+                                                    HubName.PurchaseInvoice,
+                                                    $"Download: {countAdd}/{newInvoices.Count} - {completed:F2}% completed");
             }
 
             if (invDetail is { Success: true, Message: not null, Data: not null } && invDetail.Message.Contains("99"))
             {
                 unDeserializedInvoices.Add((string)invDetail.Data);
                 var completed = decimal.Divide(countAdd, newInvoices.Count) * 100;
-                await notificationService.SendNotificationAsync(UserId,
-                                                                HubName.PurchaseInvoice,
-                                                                $"Download: {countAdd}/{newInvoices.Count} - {completed:F2}% completed");
+                await notificationService.SendAsync(UserId,
+                                                    HubName.PurchaseInvoice,
+                                                    $"Download: {countAdd}/{newInvoices.Count} - {completed:F2}% completed");
             }
 
             Console.WriteLine($"Undeserializable count: {unDeserializedInvoices.Count}");
@@ -314,14 +311,14 @@ public class InvoiceAppService(IInvoiceMongoRepository mongoPurchaseInvoice,
         var soldList = soldResult.Data.Select(inv => inv.ToDisplayModel())
                                  .ToList();
         logger.LogInformation("Number of sold found: {}", soldList.Count);
-        await notificationService.SendNotificationAsync(UserId,
-                                                        HubName.InvoiceCount,
-                                                        $"Đang kết xuất dữ liệu của {purchaseList.Count} hóa đơn đầu vào và {soldList.Count} hóa đơn đầu ra.");
+        await notificationService.SendAsync(UserId,
+                                            HubName.InvoiceCount,
+                                            $"Đang kết xuất dữ liệu của {purchaseList.Count} hóa đơn đầu vào và {soldList.Count} hóa đơn đầu ra.");
 
         var file = GenerateExcelFile(purchaseList, soldList, from, to);
-        await notificationService.SendNotificationAsync(UserId,
-                                                        HubName.InvoiceCount,
-                                                        "Finished.");
+        await notificationService.SendAsync(UserId,
+                                            HubName.InvoiceCount,
+                                            "Finished.");
         return file;
     }
 
@@ -346,7 +343,7 @@ public class InvoiceAppService(IInvoiceMongoRepository mongoPurchaseInvoice,
                 PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
                 WriteIndented = true
             };
-            await notificationService.SendNotificationAsync(UserId, HubName.PurchaseInvoice, "Writing to database...");
+            await notificationService.SendAsync(UserId, HubName.PurchaseInvoice, "Writing to database...");
             var isInserted = await mongoPurchaseInvoice.InsertInvoicesAsync(invoicesToSave
                                                                             .Select(
                                                                                 i => i.ToPurchaseInvoiceDetailBson(
