@@ -24,6 +24,7 @@ public class AppHub(INotificationAppService notificationService) : Hub
         var userId = Context.UserIdentifier;
         if (userId is not null) 
             notificationService.UnregisterConnection(userId);
+        Console.WriteLine($"Hub Disconnected: {exception?.Message}");
         return base.OnDisconnectedAsync(exception);
     }
 };

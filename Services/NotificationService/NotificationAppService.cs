@@ -7,7 +7,7 @@ public interface INotificationAppService
 {
     void RegisterConnection(string userId, string connectionId);
     void UnregisterConnection(string userId);
-    Task SendNotificationAsync(string userId, string method, object message);
+    Task SendAsync(string userId, string method, object message);
 }
 
 public class NotificationAppService(IHubContext<AppHub> hubContext) : INotificationAppService
@@ -16,7 +16,7 @@ public class NotificationAppService(IHubContext<AppHub> hubContext) : INotificat
 
     public void RegisterConnection(string userId, string connectionId)
     {
-        _userConnections.Add(userId, connectionId);
+        _userConnections[userId] = connectionId;
     }
 
     public void UnregisterConnection(string userId)
@@ -24,7 +24,7 @@ public class NotificationAppService(IHubContext<AppHub> hubContext) : INotificat
         _userConnections.Remove(userId);
     }
 
-    public async Task SendNotificationAsync(string userId, string method, object message)
+    public async Task SendAsync(string userId, string method, object message)
     {
         if (_userConnections.TryGetValue(userId, out var connectionId))
         {
