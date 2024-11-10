@@ -330,4 +330,24 @@ public static class MapExtension
     }
 
     #endregion
+
+    #region ACCOUNT TEMPLATE
+
+    public static Account ToEntity(this AccountCreateDto d)
+    {
+        return new Account()
+        {
+            Id = int.Parse(d.AccountNumber),
+            AccountNumber = d.AccountNumber,
+            Name = d.Name.RemoveSpace() ?? string.Empty,
+            Deleted = false,
+            Parent = d.Parent,
+            Grade = d.Grade,
+            B02 = d.B02,
+            B01TS = d.B01TS,
+            B01NV = d.B01NV
+        };
+    }
+
+    #endregion
 }

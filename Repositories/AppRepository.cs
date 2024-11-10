@@ -15,9 +15,9 @@ public interface IAppRepository<T, in TK> where T : BaseEntity<TK>
 {
     Task<T> CreateAsync(T entity);
     Task CreateManyAsync(IEnumerable<T> entities);
-    IQueryable<T> Find(Expression<Func<T, bool>> condition, params string[] include);
+    IQueryable<T> Find(Expression<Func<T, bool>> filter, params string[] include);
 
-    IQueryable<T> Find(Expression<Func<T, bool>> condition, string? sortBy = "Id", string? order = SortOrder.ASC,
+    IQueryable<T> Find(Expression<Func<T, bool>> filter, string? sortBy = "Id", string? order = SortOrder.ASC,
                        params string[] include);
 
     Task<T?> FindByIdAsync(TK id);
@@ -61,9 +61,9 @@ public class AppRepository<T, TK> : IAppRepository<T, TK> where T : BaseEntity<T
         return saved;
     }
 
-    public IQueryable<T> Find(Expression<Func<T, bool>> condition, params string[] include)
+    public IQueryable<T> Find(Expression<Func<T, bool>> filter, params string[] include)
     {
-        var query = _dbSet.Where(condition);
+        var query = _dbSet.Where(filter);
         if (!include.IsNullOrEmpty())
         {
             query = include.Aggregate(query, (current, prop) => current.Include(prop))
@@ -73,10 +73,10 @@ public class AppRepository<T, TK> : IAppRepository<T, TK> where T : BaseEntity<T
         return query.OrderBy("Id DESC");
     }
 
-    public IQueryable<T> Find(Expression<Func<T, bool>> condition, string? sortBy = "Id", string? order = "DESC",
+    public IQueryable<T> Find(Expression<Func<T, bool>> filter, string? sortBy = "Id", string? order = "DESC",
                               params string[] include)
     {
-        var query = _dbSet.Where(condition);
+        var query = _dbSet.Where(filter);
         if (!include.IsNullOrEmpty())
         {
             query = include.Aggregate(query, (current, prop) => current.Include(prop));

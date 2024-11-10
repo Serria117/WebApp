@@ -25,7 +25,7 @@ public class RiskCompanyAppService(IAppRepository<RiskCompany, int> riskCompanyR
 {
     public async Task<AppResponse> GetAsync(PageRequest page)
     {
-        var riskList = await riskCompanyRepo.Find(condition: x => !x.Deleted
+        var riskList = await riskCompanyRepo.Find(filter: x => !x.Deleted
                                                        && (page.Keyword == null
                                                            || x.TaxId.Contains(page.Keyword)
                                                            || x.Name.Contains(page.Keyword)),

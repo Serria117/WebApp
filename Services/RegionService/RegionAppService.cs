@@ -126,7 +126,7 @@ public class RegionAppService(ILogger<RegionAppService> logger,
 
     public async Task<AppResponse> GetDistrictsInProvinceAsync(int provinceId)
     {
-        var districts = await districtRepo.Find(condition: d => d.Province.Id == provinceId,
+        var districts = await districtRepo.Find(filter: d => d.Province.Id == provinceId,
                                                 sortBy: "Id", order: "ASC")
                                           .ToListAsync();
         return AppResponse.SuccessResponse(districts.MapCollection(x => x.ToDisplayDto()));
@@ -134,7 +134,7 @@ public class RegionAppService(ILogger<RegionAppService> logger,
 
     public async Task<AppResponse> GetTaxOfficesInProvinceAsync(int provinceId)
     {
-        var taxOffices = await taxRepo.Find(condition: t => t.Province.Id == provinceId,
+        var taxOffices = await taxRepo.Find(filter: t => t.Province.Id == provinceId,
                                             sortBy: "Id", order: "ASC")
                                       .AsNoTracking()
                                       .ToListAsync();

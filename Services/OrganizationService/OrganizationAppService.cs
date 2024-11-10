@@ -168,7 +168,7 @@ public class OrganizationAppService(IAppRepository<Organization, Guid> orgRepo,
 
     public async Task<AppResponse> GetOneById(Guid id)
     {
-        var org = await orgRepo.Find(condition: x => x.Id == id,
+        var org = await orgRepo.Find(filter: x => x.Id == id,
                                      include:
                                      [
                                          nameof(Organization.TaxOffice),

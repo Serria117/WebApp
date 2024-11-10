@@ -34,7 +34,7 @@ namespace WebApp.Services.UserService
         {
             var stopWatch = Stopwatch.StartNew();
             var pagedResult = await roleRepository.Find(
-                                                      condition: r =>
+                                                      filter: r =>
                                                           !r.Deleted && (string.IsNullOrEmpty(page.Keyword) ||
                                                                          r.RoleName.Contains(page.Keyword)),
                                                       sortBy: page.SortBy,

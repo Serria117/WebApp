@@ -216,8 +216,7 @@ public class InvoiceAppService(IInvoiceMongoRepository mongoPurchaseInvoice,
         List<string> unDeserializedInvoices = [];
         var countAdd = 1;
         var existedInvoices =
-            await mongoPurchaseInvoice.GetExistingInvoiceIdsAsync(invoiceList.Select(inv => inv.Id).ToList(),
-                                                                  buyerTaxId);
+            await mongoPurchaseInvoice.GetExistingInvoiceIdsAsync(invoiceList.Select(inv => inv.Id).ToList(), buyerTaxId);
         logger.LogInformation(
             "Found {existed}/{total} Invoices already existed in collection, those record will be ignored",
             existedInvoices.Count, invoiceList.Count);
@@ -263,8 +262,6 @@ public class InvoiceAppService(IInvoiceMongoRepository mongoPurchaseInvoice,
                     countAdd, newInvoices.Count, invoiceToAdd.Shdon
                 );
                 var completed = decimal.Divide(countAdd, newInvoices.Count) * 100;
-                /*await hub.Clients.All.SendAsync("RetrieveList",
-                                                $"Download: {countAdd}/{newInvoices.Count} - {completed:F2}% completed");*/
                 await notificationService.SendAsync(UserId,
                                                     HubName.PurchaseInvoice,
                                                     $"Download: {countAdd}/{newInvoices.Count} - {completed:F2}% completed");

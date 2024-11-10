@@ -9,6 +9,11 @@ namespace WebApp.Controllers;
 [ApiController, Route("api/risk")] [Authorize]
 public class RiskCompanyController(IRiskCompanyAppService service) : ControllerBase
 {
+    /// <summary>
+    /// Get all risk companies
+    /// </summary>
+    /// <param name="req">Query parameters</param>
+    /// <returns>List of risk companies</returns>
     [HttpGet]
     public async Task<IActionResult> GetRiskCompanies([FromQuery] RequestParam req)
     {
@@ -17,6 +22,11 @@ public class RiskCompanyController(IRiskCompanyAppService service) : ControllerB
         return Ok(result);
     }
 
+    /// <summary>
+    /// Create a new risk company
+    /// </summary>
+    /// <param name="company">The risk company entity to create</param>
+    /// <returns>An IActionResult containing the created risk company</returns>
     [HttpPost("create")]
     public async Task<IActionResult> CreateRiskCompany(RiskCompany company)
     {
@@ -24,6 +34,11 @@ public class RiskCompanyController(IRiskCompanyAppService service) : ControllerB
         return Ok(result);
     }
 
+    /// <summary>
+    /// Create multiple risk companies at once
+    /// </summary>
+    /// <param name="company">A list of risk companies to create</param>
+    /// <returns>An IActionResult containing the created risk companies</returns>
     [HttpPost("create-many")]
     public async Task<IActionResult> CreateManyRiskCompanies(List<RiskCompany> company)
     {

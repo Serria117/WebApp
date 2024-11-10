@@ -1,5 +1,4 @@
-﻿using AutoMapper.QueryableExtensions;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Spire.Xls;
 using WebApp.Core.Data;
@@ -10,8 +9,6 @@ using WebApp.Payloads;
 using WebApp.Repositories;
 using WebApp.Services.BalanceSheetService.Dto;
 using WebApp.Services.Mappers;
-using WebApp.Services.UserService;
-using Z.EntityFramework.Plus;
 
 namespace WebApp.Services.BalanceSheetService;
 
@@ -23,52 +20,84 @@ public interface IBalanceSheetAppService
     Task<AppResponse> GetImportedBalanceSheets(int id);
     Task<AppResponse> DeleteImportedBalanceSheet(int id);
     Task<AppResponse> HardDeleteImportedBalanceSheet(int id);
+    Task<AppResponse> GetAccountTemplate();
+    Task<AppResponse> CreateAccountTemplate(AccountCreateDto input);
 }
 
 public class BalanceSheetAppService(AppDbContext db,
-                                    IUnitOfWork unit,
+                                    IUnitOfWork transaction,
                                     IAppRepository<Account, int> accountRepo,
                                     IAppRepository<BalanceSheet, int> balanceSheetRepo,
                                     IAppRepository<BalanceSheetDetail, int> balanceSheetDetailRepo,
                                     IAppRepository<ImportedBalanceSheet, int> importedBsRepo,
                                     IAppRepository<ImportedBalanceSheetDetail, int> importedBsDetailRepo,
                                     IAppRepository<Organization, Guid> orgRepo,
-                                    ILogger<BalanceSheetAppService> logger
-) : IBalanceSheetAppService
+                                    ILogger<BalanceSheetAppService> logger) : IBalanceSheetAppService
 {
+    /// <summary>
+    /// Creates an imported balance sheet and its details from the provided input.
+    /// </summary>
+    /// <param name="orgId">The organization id.</param>
+    /// <param name="input">The input containing the year and details of the balance sheet.</param>
+    /// <returns>
+    /// A response indicating success or failure, with the id of the created balance sheet and
+    /// its validation result if successful, or an error message if failed.
+    /// </returns>
     public async Task<AppResponse> CreateImportedBalanceSheet(Guid orgId, BalanceSheetParams input)
     {
-        if (!await orgRepo.ExistAsync(o => o.Id == orgId)) return AppResponse.Error("org id cannot be found");
+        if (!await orgRepo.ExistAsync(o => o.Id == orgId))
+            return AppResponse.Error("org id cannot be found");
+
+        if (input?.Details == null || !input.Details.Any())
+            return AppResponse.Error("Details cannot be null or empty");
+
         var balanceSheet = new ImportedBalanceSheet
         {
             Organization = orgRepo.Attach(orgId),
             Year = input.Year,
             Details = input.Details.MapCollection(x => x.ToEntity()).ToHashSet(),
         };
-        CalculateBalanceSheetTotal(balanceSheet);
 
-        var savedBs = await importedBsRepo.CreateAsync(balanceSheet);
-
-        return AppResponse.SuccessResponse(new
+        try
         {
-            savedBs.Id,
-            Valid = savedBs.IsValid,
-            OpenCr = savedBs.SumOpenCredit,
-            OpenDr = savedBs.SumOpenDebit,
-            AriseCr = savedBs.SumAriseCredit,
-            AriseDr = savedBs.SumAriseDebit,
-            CloseCr = savedBs.SumCloseCredit,
-            CloseDr = savedBs.SumCloseDebit,
-        });
+            CalculateBalanceSheetTotal(balanceSheet);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError("Error calculating balance sheet total: {message}", ex.Message);
+            return AppResponse.Error("Failed to calculate balance sheet total");
+        }
+
+        try
+        {
+            var savedBs = await importedBsRepo.CreateAsync(balanceSheet);
+            return AppResponse.SuccessResponse(new
+            {
+                savedBs.Id,
+                Valid = savedBs.IsValid,
+                OpenCr = savedBs.SumOpenCredit,
+                OpenDr = savedBs.SumOpenDebit,
+                AriseCr = savedBs.SumAriseCredit,
+                AriseDr = savedBs.SumAriseDebit,
+                CloseCr = savedBs.SumCloseCredit,
+                CloseDr = savedBs.SumCloseDebit,
+            });
+        }
+        catch (Exception ex)
+        {
+            logger.LogError("Error saving balance sheet: {message}", ex.Message);
+            return AppResponse.Error("Failed to save balance sheet");
+        }
     }
 
     public async Task<AppResponse> GetImportedBalanceSheetsByOrg(Guid orgId)
     {
-        var result = await importedBsRepo
-                           .Find(x => x.Organization != null && x.Organization.Id == orgId && !x.Deleted,
-                                 sortBy: nameof(ImportedBalanceSheet.CreateAt),
-                                 order: SortOrder.DESC)
-                           .ToListAsync();
+        var result = await importedBsRepo.Find(x => x.Organization != null
+                                                    && x.Organization.Id == orgId
+                                                    && !x.Deleted,
+                                               sortBy: nameof(ImportedBalanceSheet.CreateAt),
+                                               order: SortOrder.DESC)
+                                         .ToListAsync();
         return result.IsNullOrEmpty()
             ? AppResponse.Error(ResponseMessage.NotFound)
             : AppResponse.SuccessResponse(result.MapCollection(x => x.ToDisplayDto()));
@@ -76,9 +105,9 @@ public class BalanceSheetAppService(AppDbContext db,
 
     public async Task<AppResponse> GetImportedBalanceSheets(int id)
     {
-        var result = await importedBsRepo
-                           .Find(x => x.Id == id && !x.Deleted, include: [nameof(ImportedBalanceSheet.Details)])
-                           .FirstOrDefaultAsync();
+        var result = await importedBsRepo.Find(filter: x => x.Id == id && !x.Deleted,
+                                               include: [nameof(ImportedBalanceSheet.Details)])
+                                         .FirstOrDefaultAsync();
 
         if (result is null) return AppResponse.Error(ResponseMessage.NotFound);
 
@@ -87,15 +116,14 @@ public class BalanceSheetAppService(AppDbContext db,
 
     public async Task<AppResponse> DeleteImportedBalanceSheet(int id)
     {
-        await unit.BeginTransactionAsync();
+        await transaction.BeginTransactionAsync();
         var detailIds = await importedBsDetailRepo.Find(x => x.ImportedBalanceSheet.Id == id)
                                                   .Select(x => x.Id)
                                                   .ToArrayAsync();
         await importedBsRepo.SoftDeleteAsync(id);
         await importedBsDetailRepo.SoftDeleteManyAsync(detailIds);
-        await unit.CommitAsync();
+        await transaction.CommitAsync();
         return AppResponse.Ok();
-        
     }
 
     public async Task<AppResponse> ProcessBalanceSheet(Guid orgId, int year, IFormFile file)
@@ -134,7 +162,29 @@ public class BalanceSheetAppService(AppDbContext db,
         return AppResponse.Ok();
     }
 
+    #region Account Template
+
+    public async Task<AppResponse> GetAccountTemplate()
+    {
+        var result = await db.Accounts.Where(x => !x.Deleted)
+                             .OrderBy(x => x.AccountNumber)
+                             .AsNoTracking()
+                             .ToListAsync();
+        return AppResponse.SuccessResponse(result);
+    }
+
+    public async Task<AppResponse> CreateAccountTemplate(AccountCreateDto input)
+    {
+        var account = input.ToEntity();
+        await accountRepo.CreateAsync(account);
+        return AppResponse.Ok();
+    }
+    
+    #endregion
+    
+
     #region PRIVATE METHODS
+
     private static void CalculateBalanceSheetTotal(ImportedBalanceSheet bs)
     {
         foreach (var b in bs.Details.Where(b => b.Account?.ToString().Length == 3))
@@ -217,5 +267,6 @@ public class BalanceSheetAppService(AppDbContext db,
     {
         return string.IsNullOrEmpty(text) ? 0 : decimal.Parse(text);
     }
+
     #endregion
 }

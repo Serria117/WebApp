@@ -76,4 +76,12 @@
     <Folder Include="Services\RestService\Dto\InvDetail\" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EditorConfigFiles Remove="D:\Repo\WebApi\WebApp\.editorconfig" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="D:\Repo\WebApi\WebApp\.editorconfig" />
+  </ItemGroup>
+
 </Project>
