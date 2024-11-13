@@ -342,7 +342,7 @@ public static class MapExtension
             Name = d.Name.RemoveSpace() ?? string.Empty,
             Deleted = false,
             Parent = d.Parent,
-            Grade = d.Grade,
+            Grade = d.AccountNumber.Length - 2,
             B02 = d.B02,
             B01TS = d.B01TS,
             B01NV = d.B01NV

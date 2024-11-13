@@ -259,6 +259,13 @@ public class BalanceSheetAppService(AppDbContext db,
 
         var newDetail = new BalanceSheetDetail()
         {
+            Account = imported.Account,
+            OpenCredit = imported.OpenDebit,
+            OpenDebit = imported.OpenDebit,
+            AriseCredit = imported.AriseDebit,
+            AriseDebit = imported.AriseDebit,
+            CloseCredit = imported.CloseDebit,
+            CloseDebit = imported.CloseDebit,
         };
         return await balanceSheetDetailRepo.CreateAsync(newDetail);
     }
