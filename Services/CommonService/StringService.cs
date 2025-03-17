@@ -5,13 +5,21 @@ namespace WebApp.Services.CommonService;
 
 public static partial class StringService
 {
+    [GeneratedRegex(@"\s{2,}")]
+    private static partial Regex SpaceRegex();
+    
+    [GeneratedRegex("\\p{IsCombiningDiacriticalMarks}+")]
+    private static partial Regex UnsignRegex();
+    
     public static string? RemoveSpace(this string? str)
     {
         return string.IsNullOrEmpty(str) ? null : SpaceRegex().Replace(str.Trim(), " ");
     }
-
-    [GeneratedRegex(@"\s{2,}")]
-    private static partial Regex SpaceRegex();
+    
+    public static decimal ParseDecimal(this string text)
+    {
+        return string.IsNullOrEmpty(text) ? 0 : decimal.Parse(text);
+    }
     
     public static string UnSign(this string s)
     {  
@@ -20,6 +28,5 @@ public static partial class StringService
         return regex.Replace(temp, string.Empty).Replace('\u0111', 'd').Replace('\u0110', 'D').RemoveSpace()!;
     }
 
-    [GeneratedRegex("\\p{IsCombiningDiacriticalMarks}+")]
-    private static partial Regex UnsignRegex();
+   
 }

@@ -17,6 +17,9 @@ public class InvoiceDisplayDto
     public double? TotalPrice { get; set; }
     public double? Vat { get; set; }
     public double? TotalPriceVat { get; set; }
+    
+    public double? ChietKhau { get; set; }
+    public double? Phi { get; set; }
     public string? TotalInWord { get; set; }
     public DateTime? CreationDate { get; set; } //Ngày lập
     public DateTime? SigningDate { get; set; } //Ngày ký
@@ -27,6 +30,8 @@ public class InvoiceDisplayDto
     public int? InvoiceTypeNumber { get; set; } //Mã loại hóa đơn
 
     public bool? Risk { get; set; } =  false;
+    
+    public string? SellerSignature { get; set; }
     
 }
 
@@ -40,4 +45,5 @@ public class Goods
     public decimal? PreTaxPrice { get; set; } //Giá trước thuế
     public double? Discount { get; set; } //Chiết khấu
     public decimal? Tax { get; set; } //Tiền thuế
+    public string? TaxType { get; set; } //Loại thuế suất
 }

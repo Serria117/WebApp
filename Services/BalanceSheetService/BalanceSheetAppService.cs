@@ -8,6 +8,7 @@ using WebApp.Enums;
 using WebApp.Payloads;
 using WebApp.Repositories;
 using WebApp.Services.BalanceSheetService.Dto;
+using WebApp.Services.CommonService;
 using WebApp.Services.Mappers;
 
 namespace WebApp.Services.BalanceSheetService;
@@ -48,7 +49,7 @@ public class BalanceSheetAppService(AppDbContext db,
         if (!await orgRepo.ExistAsync(o => o.Id == orgId))
             return AppResponse.Error("org id cannot be found");
 
-        if (input?.Details == null || !input.Details.Any())
+        if (input?.Details == null || input.Details.Count == 0)
             return AppResponse.Error("Details cannot be null or empty");
 
         var balanceSheet = new ImportedBalanceSheet
@@ -147,7 +148,7 @@ public class BalanceSheetAppService(AppDbContext db,
         });
     }
 
-    public async Task<AppResponse> HardDeleteImportedBalanceSheet(int id)
+  public async Task<AppResponse> HardDeleteImportedBalanceSheet(int id)
     {
         await db.ExecuteInTransaction(async () =>
         {
@@ -219,12 +220,12 @@ public class BalanceSheetAppService(AppDbContext db,
             var detail = new ImportedBalanceSheetDetail
             {
                 Account = worksheet.Range[i, 1].Value,
-                OpenCredit = ParseDecimal(worksheet.Range[i, 3].Value),
-                OpenDebit = ParseDecimal(worksheet.Range[i, 4].Value),
-                AriseCredit = ParseDecimal(worksheet.Range[i, 5].Value),
-                AriseDebit = ParseDecimal(worksheet.Range[i, 6].Value),
-                CloseCredit = ParseDecimal(worksheet.Range[i, 7].Value),
-                CloseDebit = ParseDecimal(worksheet.Range[i, 8].Value),
+                OpenCredit = worksheet.Range[i, 3].Value.ParseDecimal(),
+                OpenDebit = worksheet.Range[i, 4].Value.ParseDecimal(),
+                AriseCredit = worksheet.Range[i, 5].Value.ParseDecimal(),
+                AriseDebit = worksheet.Range[i, 6].Value.ParseDecimal(),
+                CloseCredit = worksheet.Range[i, 7].Value.ParseDecimal(),
+                CloseDebit = worksheet.Range[i, 8].Value.ParseDecimal(),
             };
             logger.LogInformation("{detail}", detail.ToString());
             balanceSheetDetails.Add(detail);

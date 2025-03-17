@@ -27,6 +27,8 @@ public static class InvoiceExtension
             Vat = doc.Tgtthue,
             TotalPriceVat = doc.Tgtttbso,
             TotalInWord = doc.Tgtttbchu,
+            ChietKhau = doc.Ttcktmai,
+            Phi = doc.Tgtphi,
             CreationDate = doc.Tdlap?.ToLocalTime(),
             SigningDate = doc.Nky?.ToLocalTime(),
             IssueDate = doc.Ncma?.ToLocalTime(),
@@ -60,8 +62,10 @@ public static class InvoiceExtension
                 Discount = g.Stckhau,
                 Tax = g.Thtien is null || g.Tsuat is null
                     ? 0
-                    : Math.Round(g.Thtien.Value * g.Tsuat.Value, 0)
+                    : Math.Round(g.Thtien.Value * g.Tsuat.Value, 0),
+                TaxType = g.Ltsuat
             }).ToList(),
+            SellerSignature = doc.Nbcks
         };
     }
 

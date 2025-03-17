@@ -9,5 +9,4 @@ public partial class CustomMap
 {
     public partial OrganizationDisplayDto OrgToDto(Organization org);
     
-    public partial Organization DtoToOrg(OrganizationDisplayDto org);
 }

@@ -133,11 +133,7 @@ public class OrganizationAppService(IAppRepository<Organization, Guid> orgRepo,
                                                        o.ShortName.Contains(keyword)) ||
                                                        o.TaxId.Contains(keyword)),
                                               sortBy: page.SortBy, order: page.OrderBy,
-                                              include:
-                                              [
-                                                  nameof(Organization.TaxOffice),
-                                                  nameof(Organization.District)
-                                              ])
+                                              include: [nameof(Organization.TaxOffice), nameof(Organization.District)])
                                         .AsSplitQuery()
                                         .AsNoTracking()
                                         .ToPagedListAsync(page.Number, page.Size))
@@ -169,11 +165,7 @@ public class OrganizationAppService(IAppRepository<Organization, Guid> orgRepo,
     public async Task<AppResponse> GetOneById(Guid id)
     {
         var org = await orgRepo.Find(filter: x => x.Id == id,
-                                     include:
-                                     [
-                                         nameof(Organization.TaxOffice),
-                                         nameof(Organization.District)
-                                     ])
+                                     include: [nameof(Organization.TaxOffice), nameof(Organization.District)])
                                .FirstOrDefaultAsync();
         return org == null
             ? AppResponse.Error(ResponseMessage.NotFound)
@@ -191,12 +183,12 @@ public class OrganizationAppService(IAppRepository<Organization, Guid> orgRepo,
 
         if (dto.TaxOfficeId is null || !await taxOfficeRepo.ExistAsync(x => x.Id == dto.TaxOfficeId))
         {
-            errors.Add("Invalid tax office");
+            errors.Add("Invalid tax office or tax office not found");
         }
 
         if (dto.DistrictId is null || !await districtRepo.ExistAsync(x => x.Id == dto.DistrictId))
         {
-            errors.Add("Invalid district");
+            errors.Add("Invalid district or district not found");
         }
 
         return errors;

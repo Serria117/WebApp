@@ -43,6 +43,7 @@ public static class MapExtension
                     Name = o.District.Name,
                     AlterName = o.District.AlterName,
                     ProvinceId = o.District.Province?.Id,
+                    ProvinceName = o.District.Province?.Name,
                 },
             Emails = o.Emails,
             Phones = o.Phones,

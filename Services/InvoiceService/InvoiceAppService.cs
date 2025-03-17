@@ -51,7 +51,7 @@ public interface IInvoiceAppService
     /// <param name="from">Start date</param>
     /// <param name="to">End date</param>
     /// <returns>The byte array of created excel file to download</returns>
-    Task<byte[]> ExportExcel(string taxCode, string from, string to);
+    Task<byte[]?> ExportExcel(string taxCode, string from, string to);
 
     /// <summary>
     /// Recheck the saved invoices in the database and attempt to update their status if any change.
@@ -285,7 +285,7 @@ public class InvoiceAppService(IInvoiceMongoRepository mongoPurchaseInvoice,
 
     #endregion
 
-    public async Task<byte[]> ExportExcel(string taxCode, string from, string to)
+    public async Task<byte[]?> ExportExcel(string taxCode, string from, string to)
     {
         var purchaseFilter = InvoiceFilterBuilder.StartBuilder()
                                                  .FromDate(from)
@@ -398,17 +398,34 @@ public class InvoiceAppService(IInvoiceMongoRepository mongoPurchaseInvoice,
     }
 
 
-    private static byte[] GenerateExcelFile(List<InvoiceDisplayDto> purchaseList,
-                                            List<InvoiceDisplayDto> soldList,
-                                            string from, string to)
+    private static byte[]? GenerateExcelFile(List<InvoiceDisplayDto> purchaseList,
+                                             List<InvoiceDisplayDto> soldList,
+                                             string from, string to)
     {
+        if (purchaseList.Count == 0 && soldList.Count == 0)
+        {
+            return null;
+        }
+        
         var workbook = new Workbook
         {
             Version = ExcelVersion.Version2016
         };
-        var orgName = string.Empty + purchaseList[0].BuyerName.ToUpper();
-        var orgTaxId = string.Empty + purchaseList[0].BuyerTaxCode.ToUpper();
+        
+        var orgName = string.Empty;
+        var orgTaxId = string.Empty;
 
+        if (purchaseList.Count == 0)
+        {
+            orgName += purchaseList[0].BuyerName.ToUpper();
+            orgTaxId += purchaseList[0].BuyerTaxCode.ToUpper();
+        }
+        else
+        {
+            orgName += soldList[0].SellerName.ToUpper();
+            orgTaxId += soldList[0].SellerTaxCode.ToUpper();
+        }
+        
         var shPurchaseSummary = workbook.Worksheets[1];
         shPurchaseSummary.Name = "Purchase_Summary";
 
@@ -456,15 +473,16 @@ public class InvoiceAppService(IInvoiceMongoRepository mongoPurchaseInvoice,
             "Hàng hóa/dịch vụ", //5
             "Đơn vị tính", //6
             "Đơn giá", //7
-            "Giá mua trước thuế", //
-            "Thuế suất",
-            "Chiết khấu", //
-            "Thuế GTGT", //
-            "Ngày lập", //
-            "Ngày ký", //
-            "Ngày cấp mã", //
-            "Trạng thái", //
-            "Loại hóa đơn"
+            "Giá mua trước thuế", //8
+            "Thuế suất", //9
+            "Chiết khấu", //10
+            "Thuế GTGT", //11
+            "Ngày lập", //12
+            "Ngày ký", //13
+            "Ngày cấp mã", //14
+            "Trạng thái", //15
+            "Loại hóa đơn", //16
+            "Loại thuế suất" //17
         ];
 
         List<string> purchaseSummaryTitles =
@@ -478,10 +496,12 @@ public class InvoiceAppService(IInvoiceMongoRepository mongoPurchaseInvoice,
             "Ngày cấp mã", //7
             "Giá mua trước thuế", //8
             "Thuế GTGT", //9
-            "Thành tiền", //10
-            "Trạng thái", //11
-            "Loại hóa đơn", //12
-            "Cảnh báo nhà cung cấp" //13
+            "Chiết khấu TM", //10
+            "Phí", //11
+            "Thành tiền", //12
+            "Trạng thái", //13
+            "Loại hóa đơn", //14
+            "Cảnh báo nhà cung cấp" //15
         ];
 
         for (var i = 0; i < purchaseDetailTitles.Count; i++)
@@ -557,7 +577,7 @@ public class InvoiceAppService(IInvoiceMongoRepository mongoPurchaseInvoice,
 
                 shPurchaseDetail.Range[detailRow, 15].Value2 = inv.Status;
                 shPurchaseDetail.Range[detailRow, 16].Value2 = inv.InvoiceType;
-
+                shPurchaseDetail.Range[detailRow, 17].Value2 = item.TaxType;
                 #endregion
 
                 detailRow++;
@@ -581,17 +601,25 @@ public class InvoiceAppService(IInvoiceMongoRepository mongoPurchaseInvoice,
             shPurchaseSummary.Range[purchaseSummaryRow, 9].Value2 = inv.Vat;
             shPurchaseSummary.Range[purchaseSummaryRow, 9].NumberFormat = "#,##0";
 
-            shPurchaseSummary.Range[purchaseSummaryRow, 10].Value2 = inv.TotalPriceVat;
+            shPurchaseSummary.Range[purchaseSummaryRow, 10].Value2 = inv.ChietKhau;
             shPurchaseSummary.Range[purchaseSummaryRow, 10].NumberFormat = "#,##0";
+            
+            shPurchaseSummary.Range[purchaseSummaryRow, 11].Value2 = inv.Phi;
+            shPurchaseSummary.Range[purchaseSummaryRow, 11].NumberFormat = "#,##0";
 
-            shPurchaseSummary.Range[purchaseSummaryRow, 11].Value2 = inv.Status;
-            shPurchaseSummary.Range[purchaseSummaryRow, 12].Value2 = inv.InvoiceType;
-            shPurchaseSummary.Range[purchaseSummaryRow, 13].Value2 = inv.Risk is null or false ? "OK" : "Rủi ro";
+            shPurchaseSummary.Range[purchaseSummaryRow, 12].Value2 = inv.TotalPriceVat;
+            shPurchaseSummary.Range[purchaseSummaryRow, 12].NumberFormat = "#,##0";
 
+            shPurchaseSummary.Range[purchaseSummaryRow, 13].Value2 = inv.Status;
+            shPurchaseSummary.Range[purchaseSummaryRow, 14].Value2 = inv.InvoiceType;
+            shPurchaseSummary.Range[purchaseSummaryRow, 15].Value2 = inv.Risk is null or false ? "OK" : "Rủi ro";
+            
             #endregion
 
             purchaseSummaryRow++;
         }
+
+        #region sold invoice
 
         var soldSummaryRow = 5;
         foreach (var inv in soldList)
@@ -617,6 +645,8 @@ public class InvoiceAppService(IInvoiceMongoRepository mongoPurchaseInvoice,
             soldSummaryRow++;
         }
 
+        #endregion
+        
         shPurchaseDetail.Range[4, 1, detailRow - 1, 3].AutoFitColumns();
         shPurchaseDetail.Range[4, 6, detailRow - 1, 16].AutoFitColumns();
 
@@ -638,7 +668,7 @@ public class InvoiceAppService(IInvoiceMongoRepository mongoPurchaseInvoice,
             $"\"Tổng số hóa đơn: \"&COUNT(UNIQUE(A{titleRow + 1}:A{detailRow - 1}))";
         shSoldSummary.Range[3, 1].FormulaR1C1 = $"\"Tổng số hóa đơn: \"&COUNT(A{titleRow + 1}:A{soldSummaryRow - 1})";
 
-        for (var i = 8; i <= 10; i++)
+        for (var i = 8; i <= 12; i++)
         {
             shPurchaseSummary.Range[titleRow - 1, i].FormulaR1C1 = $"=SUBTOTAL(9,R5C{i}:R{purchaseSummaryRow - 1}C{i})";
             shPurchaseSummary.Range[titleRow - 1, i].NumberFormat = "#,##0";
@@ -652,7 +682,7 @@ public class InvoiceAppService(IInvoiceMongoRepository mongoPurchaseInvoice,
             shPurchaseDetail.Range[titleRow - 1, i].Style.Font.IsBold = true;
         }
 
-        for (var i = 8; i <= 10; i++)
+        for (var i = 8; i <= 12; i++)
         {
             shSoldSummary.Range[titleRow - 1, i].FormulaR1C1 = $"=SUBTOTAL(9,R5C{i}:R{detailRow - 1}C{i})";
             shSoldSummary.Range[titleRow - 1, i].NumberFormat = "#,##0";
@@ -661,12 +691,12 @@ public class InvoiceAppService(IInvoiceMongoRepository mongoPurchaseInvoice,
 
         #endregion
 
-        foreach (var cell in shPurchaseDetail.Range[4, 1, detailRow - 1, 16])
+        foreach (var cell in shPurchaseDetail.Range[4, 1, detailRow - 1, 17])
         {
             cell.BorderAround(LineStyleType.Thin);
         }
 
-        foreach (var cell in shPurchaseSummary.Range[4, 1, purchaseSummaryRow - 1, 13])
+        foreach (var cell in shPurchaseSummary.Range[4, 1, purchaseSummaryRow - 1, 15])
         {
             cell.BorderAround(LineStyleType.Thin);
         }

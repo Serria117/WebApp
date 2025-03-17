@@ -98,6 +98,14 @@ public class InvoiceController(IRestAppService restService,
     public async Task<IActionResult> DownloadInvoice(string taxId, string from, string to)
     {
         var fileByte = await invService.ExportExcel(taxId, from, to);
+        if (fileByte is null)
+        {
+            return NotFound(new
+            {
+                code = "404",
+                message = "Invoice not found."
+            });
+        }
         var fileName = $"{taxId}_{from}_{to}_{Ulid.NewUlid()}.xlsx";
         Response.Headers["X-Filename"] = fileName;
         return File(fileByte, ContentType.ApplicationOfficeSpreadSheet, fileName);
