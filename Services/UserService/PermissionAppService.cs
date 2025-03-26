@@ -16,18 +16,18 @@ namespace WebApp.Services.UserService
         Task<AppResponse> GetAllPermissionsInSystem();
     }
 
-    public class PermissionAppService(IAppRepository<User, Guid> userRepo, 
-        IAppRepository<Permission, int> permissionRepo,
-        IUserMongoRepository userMongoRepository) : IPermissionAppService
+    public class PermissionAppService(IAppRepository<User, Guid> userRepo,
+                                      IAppRepository<Permission, int> permissionRepo,
+                                      IUserMongoRepository userMongoRepository) : IPermissionAppService
     {
         public async Task<List<string>> GetPermissions(Guid userId)
         {
             return await userRepo.GetQueryable().Where(u => u.Id == userId)
-                .Include(u => u.Roles).ThenInclude(r => r.Permissions)
-                .SelectMany(u => u.Roles)
-                .SelectMany(r => r.Permissions).Select(p => p.PermissionName)
-                .Distinct()
-                .ToListAsync();
+                                 .Include(u => u.Roles).ThenInclude(r => r.Permissions)
+                                 .SelectMany(u => u.Roles)
+                                 .SelectMany(r => r.Permissions).Select(p => p.PermissionName)
+                                 .Distinct()
+                                 .ToListAsync();
         }
 
         public async Task<List<string>> GetPermissionsFromMongo(Guid userId)

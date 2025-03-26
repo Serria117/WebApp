@@ -28,7 +28,7 @@ var restSettings = config.GetSection("RestSharp").Get<RestSharpSetting>()!;
 var mongoSettings = config.GetSection("MongoDbSettings").Get<MongoDbSettings>()!;
 var origins = config.GetSection("AllowedOrigins").Get<string[]>() ?? [];
 
-//Config logging
+//Logging configuration:
 Log.Logger = new LoggerConfiguration()
              .WriteTo.Console()
              .WriteTo.File(
@@ -40,7 +40,7 @@ Log.Logger = new LoggerConfiguration()
              )
              .CreateLogger();
 
-// Add services to the container.
+// Entity Interceptor for auditing:
 services.AddSingleton<AuditableEntityInterceptor>();
 services.AddDbContext<AppDbContext>((serviceProvider, options) =>
 {
@@ -49,6 +49,7 @@ services.AddDbContext<AppDbContext>((serviceProvider, options) =>
            .AddInterceptors(auditInterceptor);
 });
 
+// Handle JSON cycles:
 builder.Services.AddControllers()
        .AddJsonOptions(options =>
        {
@@ -56,6 +57,7 @@ builder.Services.AddControllers()
                System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
        });
 
+// Authentication:
 services.AddAuthentication(options =>
         {
             options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -98,6 +100,7 @@ services.AddAuthorization();
 services.AddSingleton<IAuthorizationHandler, PermissionAuthorizationHandler>();
 services.AddSingleton<IAuthorizationPolicyProvider, PermissionAuthorizationPolicyProvider>();
 
+// SignalR configuration:
 services.AddSignalR(op =>
 {
     op.EnableDetailedErrors = true;

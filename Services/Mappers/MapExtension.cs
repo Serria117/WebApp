@@ -66,6 +66,7 @@ public static class MapExtension
             CreateAt = o.CreateAt,
             CreateBy = o.CreateBy,
             LastUpdateAt = o.LastUpdateAt,
+            FiscalYearFirstDate = o.FiscalYearFistDate
         };
     }
 

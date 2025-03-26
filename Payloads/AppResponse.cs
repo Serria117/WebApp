@@ -60,7 +60,8 @@ public class AppResponse
         {
             Success = false,
             Message = mesage,
-            Data = !details.IsNullOrEmpty() ? details.ToList() : null
+            Data = !details.IsNullOrEmpty() ? details.ToList() : null,
+            Code = "99",
         };
     }
 

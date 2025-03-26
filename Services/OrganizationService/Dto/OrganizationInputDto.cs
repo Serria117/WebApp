@@ -32,5 +32,8 @@ public class OrganizationInputDto
 
     [Required(ErrorMessage = "TaxOffice is required")]
     public int? TaxOfficeId { get; set; }
+    
+    [RegularExpression(@"^\d{2}/\d{2}$", ErrorMessage = "Please enter valid date format: dd/mm for FiscalYearFirstDate")]
+    public string? FiscalYearFirstDate { get; set; } = "01/01";
     //public DateTime LastUpdateAt { get; set; } = DateTime.UtcNow.ToLocalTime();
 }

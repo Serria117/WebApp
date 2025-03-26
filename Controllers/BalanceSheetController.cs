@@ -1,10 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
-using WebApp.Core.DomainEntities.Accounting;
 using WebApp.Payloads;
 using WebApp.Services.BalanceSheetService;
-using WebApp.Services.BalanceSheetService.Dto;
 
 namespace WebApp.Controllers;
 
@@ -31,6 +28,7 @@ public class BalanceSheetController(IBalanceSheetAppService service) : Controlle
     /// <summary>
     /// Get the list of imported balance sheet of an organization
     /// </summary>
+    /// <response code="200">Returns the success message</response>
     /// <param name="orgId"></param>
     /// <returns>The list of all balance sheet of an organization</returns>
     [HttpGet("{orgId:guid}")]

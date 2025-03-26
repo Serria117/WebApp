@@ -16,6 +16,16 @@ namespace WebApp.Services.BalanceSheetService;
 public interface IBalanceSheetAppService
 {
     Task<AppResponse> ProcessBalanceSheet(Guid orgId, int year, IFormFile file);
+
+    /// <summary>
+    /// Creates an imported balance sheet and its details from the provided input.
+    /// </summary>
+    /// <param name="orgId">The organization id.</param>
+    /// <param name="input">The input containing the year and details of the balance sheet.</param>
+    /// <returns>
+    /// A response indicating success or failure, with the id of the created balance sheet and
+    /// its validation result if successful, or an error message if failed.
+    /// </returns>
     Task<AppResponse> CreateImportedBalanceSheet(Guid orgId, BalanceSheetParams input);
     Task<AppResponse> GetImportedBalanceSheetsByOrg(Guid orgId);
     Task<AppResponse> GetImportedBalanceSheets(int id);
@@ -35,15 +45,6 @@ public class BalanceSheetAppService(AppDbContext db,
                                     IAppRepository<Organization, Guid> orgRepo,
                                     ILogger<BalanceSheetAppService> logger) : IBalanceSheetAppService
 {
-    /// <summary>
-    /// Creates an imported balance sheet and its details from the provided input.
-    /// </summary>
-    /// <param name="orgId">The organization id.</param>
-    /// <param name="input">The input containing the year and details of the balance sheet.</param>
-    /// <returns>
-    /// A response indicating success or failure, with the id of the created balance sheet and
-    /// its validation result if successful, or an error message if failed.
-    /// </returns>
     public async Task<AppResponse> CreateImportedBalanceSheet(Guid orgId, BalanceSheetParams input)
     {
         if (!await orgRepo.ExistAsync(o => o.Id == orgId))
@@ -110,7 +111,7 @@ public class BalanceSheetAppService(AppDbContext db,
                                                include: [nameof(ImportedBalanceSheet.Details)])
                                          .FirstOrDefaultAsync();
 
-        if (result is null) return AppResponse.Error(ResponseMessage.NotFound);
+        if (result is null) return AppResponse.Error404(ResponseMessage.NotFound);
 
         return AppResponse.SuccessResponse(result.ToDisplayDto());
     }
@@ -129,6 +130,12 @@ public class BalanceSheetAppService(AppDbContext db,
 
     public async Task<AppResponse> ProcessBalanceSheet(Guid orgId, int year, IFormFile file)
     {
+        var org = await orgRepo.Find(x => x.Id == orgId).FirstOrDefaultAsync();
+        if (org is null)
+        {
+            return AppResponse.Error(ResponseMessage.NotFound);
+        }
+
         using var stream = new MemoryStream();
         await file.CopyToAsync(stream);
         stream.Position = 0;
@@ -136,7 +143,11 @@ public class BalanceSheetAppService(AppDbContext db,
         var importedBalanceSheet = new ImportedBalanceSheet
         {
             Details = ReadBalanceSheetFromFile(stream).ToHashSet(),
+            Organization = org,
+            Year = year,
         };
+        
+        //TODO: save imported balance sheet to db
 
         return AppResponse.SuccessResponse(new
         {
@@ -148,7 +159,7 @@ public class BalanceSheetAppService(AppDbContext db,
         });
     }
 
-  public async Task<AppResponse> HardDeleteImportedBalanceSheet(int id)
+    public async Task<AppResponse> HardDeleteImportedBalanceSheet(int id)
     {
         await db.ExecuteInTransaction(async () =>
         {
@@ -180,9 +191,9 @@ public class BalanceSheetAppService(AppDbContext db,
         await accountRepo.CreateAsync(account);
         return AppResponse.Ok();
     }
-    
+
     #endregion
-    
+
 
     #region PRIVATE METHODS
 
@@ -203,6 +214,11 @@ public class BalanceSheetAppService(AppDbContext db,
                      && bs.SumCloseCredit == bs.SumCloseDebit;
     }
 
+    /// <summary>
+    /// Read uploaded excel file and extract balance sheet data
+    /// </summary>
+    /// <param name="fileStream">The stream of the uploaded file</param>
+    /// <returns>List of balance sheet detail</returns>
     private List<ImportedBalanceSheetDetail> ReadBalanceSheetFromFile(Stream fileStream)
     {
         List<ImportedBalanceSheetDetail> balanceSheetDetails = [];

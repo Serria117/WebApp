@@ -20,4 +20,5 @@ public class OrganizationDisplayDto
     public string? CreateBy { get; set; }
     public TaxOfficeDisplayDto? TaxOffice { get; set; }
     public DistrictDisplayDto? District { get; set; }
+    public string? FiscalYearFirstDate { get; set; }
 }
