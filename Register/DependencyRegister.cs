@@ -3,6 +3,7 @@ using WebApp.Mongo;
 using WebApp.Mongo.MongoRepositories;
 using WebApp.Repositories;
 using WebApp.Services.BalanceSheetService;
+using WebApp.Services.DocumentService;
 using WebApp.Services.InvoiceService;
 using WebApp.Services.NotificationService;
 using WebApp.Services.OrganizationService;
@@ -47,5 +48,6 @@ public static class DependencyRegister
         s.AddTransient<IRegionAppService, RegionAppService>();
         s.AddTransient<IRiskCompanyAppService, RiskCompanyAppService>();
         s.AddTransient<IBalanceSheetAppService, BalanceSheetAppService>();
+        s.AddTransient<IDocumentAppService, DocumentAppService>();
     }
 }
